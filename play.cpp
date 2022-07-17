@@ -561,12 +561,18 @@ struct Game {
                 // or no casualty
                 if (!askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last) || firstTime)
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
-                if (!moveDone && a.first > 0 && distFromOppBase[xx][yy] >= 30)
+                if (!moveDone && a.first > 0 &&
+                    distFromOppBase[myFlagX][myFlagY] >=
+                        30)  // casualty হবে, প্লাস অনেক দূরেও আছি, মারামারি করার কী দরকার
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
 
                 if (myFlagCarrier == -1) {
                     //এখন flag পড়ে আছে
                     // প্রথমে দেখো কেউ আসতেসে কিনা
+                    if (!moveDone && d.first == 0 && d.second > 0 &&
+                        myScore >= powerups[0].price)  //এখন মারলে নিশ্চিত মৃত্যু
+                        takeOperation(FIRE, i, moveDone);
+                    //চাইসিলাম আগে freeze করে then fire করতে, কিন্তু সেটা ভালো রেজাল্ট দিচ্ছে না
                     if (!moveDone &&
                         (a.second > 0 && myScore >= powerups[0].price))  // someone coming
                         takeOperation(FIRE, i, moveDone);
@@ -580,6 +586,7 @@ struct Game {
                         if (!moveDone &&
                             askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last)) {
                             //এই minion-ই তো নিয়ে যাইতেসে
+                            // again, freeze integrate করার আইডিয়া ভালো কাজ করতেসিলো না
                             if (d.first == 0)
                                 takeOperation(FIRE, i, moveDone);
                             else
