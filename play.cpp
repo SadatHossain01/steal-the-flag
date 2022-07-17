@@ -143,17 +143,17 @@ inline bool isValid(int x, int y) {
 }
 
 inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis,
-                     int lastX = -1, int lastY = -1) {
-    // targetID applicable only for opp minions
-    // cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2
-    //      << " " << lastX << " " << lastY << endl;
+                     int lastX, int lastY) {
+    cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2
+         << " " << lastX << " " << lastY << endl;
     //  x2 y2 is the target
     bool ret = false;
-    if (firstTime) return ret;  //প্রথম বারেই মারতে হবে কেন?
     int now = -1;
     // first ensure সে এখানে বসে নাই ইচ্ছা করে, কারণ তা হলে যাওয়ার কয়টা জায়গা আছে
     // matter করে না, বসেই থাকবে যেহেতু
-    if (wantAdjAnalysis && (x2 != lastX || y2 != lastY)) {
+    if (wantAdjAnalysis && (lastX == -1 || (x2 != lastX || y2 != lastY))) {
+        // lastX = -1 হলে last এর data নাই
+        // so do the direct comparison
         // so dealing with an opponent
         //আমি তাকে যে লাইন ধরে attack করবো, তার যদি ওই লাইন ছেড়ে যাওয়ার ability
         //থাকে, তাহলে ওই attack করে লাভ নাই
@@ -164,23 +164,15 @@ inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis,
     }
     if (x1 == x2) {  // horizontal matching
         //উল্টা হলে negative আসবে, সমস্যা কী?
-        // if (y1 > y2) {
-        //     // swap(x1, x2);
-        //     swap(y1, y2);
-        // }
         now = prefixSumRow[x2][y2];
         if (y1 != 0) now -= prefixSumRow[x1][y1 - 1];
         if (now == 0) ret = true;
     } else if (y1 == y2) {  // vertical matching
-        // if (x1 > x2) {
-        //     swap(x1, x2);
-        //     // swap(y1, y2);
-        // }
         now = prefixSumCol[x2][y2];
         if (x1 != 0) now -= prefixSumCol[x1 - 1][y1];
         if (now == 0) ret = true;
     }
-    // cerr << now << " " << (ret ? "true" : "false") << endl;
+    cerr << now << " " << (ret ? "true" : "false") << endl;
     return ret;
 }
 
@@ -420,12 +412,15 @@ struct Game {
         // y2
         //      << " " << (wantAdjAnalysis ? "true" : "false") << " "
         //      << last.isOppVisible[targetID] << endl;
-        if (!wantAdjAnalysis || firstTime || !last.isOppVisible[targetID])
-            return sameLine(x1, y1, x2, y2, false);
+        int lastX = -1, lastY = -1;
+        if (wantAdjAnalysis && !firstTime && !last.isOppVisible[targetID]) {
+            lastX = last.oppMinions[targetID].posX;
+            lastY = last.oppMinions[targetID].posY;
+        }
+        if (wantAdjAnalysis)
+            return sameLine(x1, y1, x2, y2, true, lastX, lastY);
         else
-            return sameLine(x1, y1, x2, y2, true,
-                            last.oppMinions[targetID].posX,
-                            last.oppMinions[targetID].posY);
+            return sameLine(x1, y1, x2, y2, false, lastX, lastY);
     }
 
     void calculateVisibleMinions(int id, pair<int, int>& affected,
@@ -485,6 +480,8 @@ struct Game {
             auto it = find(v.begin(), v.end(), i);
             if (it == v.end()) v.push_back(i);
         }
+        for (int i = 0; i < v.size(); i++) cerr << v[i] << " ";
+        cerr << endl;
         for (int j = 0; j < n_minions; j++) {
             int i = v[j];
             if (!isAlive[i]) continue;  // dead already
@@ -541,19 +538,22 @@ struct Game {
                     bool ret = askSameLine(xx, yy, oppFlagX, oppFlagY, false,
                                            -1, last);
                     if (ret) {  // so reached the same line as flag
-                        if (!moveDone && a.second > 0) {
-                            if (last.myMinions[i].health ==
-                                myMinions[i].health) {
+                        if (a.second > 0) {
+                            if (!moveDone && last.myMinions[i].health ==
+                                                 myMinions[i].health) {
                                 //আমাকে কিছু করতেসে না
                                 takeOperation(MOVE, i, moveDone, oppFlagX,
                                               oppFlagY);
-                            } else if (a.first == 0)  // flag ছিনিয়ে আনো :3
+                            }
+                            //আমাকে কিছু করতেসে এখন!
+                            if (!moveDone &&
+                                a.first == 0)  // flag ছিনিয়ে আনো :3
                                 takeOperation(FIRE, i, moveDone);
-                            else {
+                            if (!moveDone && a.first > 0) {  //আমার minion আছে
                                 //এই probability আসলে কম, but regardless
                                 //বের করো flag কে পাহারা দিতেসে
-                                //তারা already frozen কি না, থাকলে তো আবার দেয়া
-                                //উচিত না
+                                //তারা already frozen কি না, থাকলে তো আবার
+                                //দেয়া উচিত না
                                 bool alreadyFrozen = true;
                                 for (int i = 0; i < n_minions; i++) {
                                     if (!isOppVisible[i]) continue;
@@ -573,10 +573,12 @@ struct Game {
                                     takeOperation(MOVE, i, moveDone, oppFlagX,
                                                   oppFlagY);
                             }
-                        } else if (!moveDone)
+                        }
+                        if (!moveDone)
                             takeOperation(MOVE, i, moveDone, oppFlagX,
                                           oppFlagY);
-                    } else  // line এ যাওনাই, তাহলে যাও এখন
+                    }
+                    if (!moveDone)  // line এ যাওনাই, তাহলে যাও এখন
                         takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                 }
             }
@@ -588,7 +590,7 @@ struct Game {
                 if (!askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last) ||
                     firstTime)
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
-                if (a.first > 0 && distFromOppBase[xx][yy] >= 30)
+                if (!moveDone && a.first > 0 && distFromOppBase[xx][yy] >= 30)
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
 
                 if (myFlagCarrier == -1) {
@@ -608,17 +610,13 @@ struct Game {
                         if (!moveDone &&
                             askSameLine(xx, yy, myFlagX, myFlagY, true,
                                         myFlagCarrier, last)) {
-                            //এই তো নিয়ে যাইতেসে
+                            //এই minion-ই তো নিয়ে যাইতেসে
                             if (d.first == 0)
                                 takeOperation(FIRE, i, moveDone);
                             else
                                 takeOperation(MOVE, i, moveDone, myFlagX,
                                               myFlagY);
                         }
-                        if (!moveDone &&
-                            ((a.first == 0 && a.second > 0) ||
-                             (d.first == 0 && d.second > 0)))  // so fire
-                            takeOperation(FIRE, i, moveDone);
                         if (!moveDone)
                             takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                     }
@@ -630,8 +628,8 @@ struct Game {
             else if (explorerMinions.count(i)) {
                 //৫ টা থাকলে দুইটা পুরা একসাথে চলে, এটা ঠিক করতে হবে
                 cerr << "explorer minion" << endl;
-                // explorer দের মারামারি করার দরকার নাই, unless myFlagCarrier কে
-                // পায়
+                // explorer দের মারামারি করার দরকার নাই, unless
+                // myFlagCarrier কে পায়
                 if (myScore >= powerups[0].price && a.second > 0 &&
                     myFlagCarrier != -1) {
                     if (askSameLine(xx, yy, myFlagX, myFlagY, true,
@@ -641,7 +639,7 @@ struct Game {
                 if (!moveDone) {
                     pair<int, int> dest = {-1, -1};
                     if (!not_visited.empty()) {
-                        if (i & 1) {
+                        if (*(explorerMinions.begin()) == i) {
                             auto now = not_visited.front();
                             while (!leftToVisit[now.first][now.second]) {
                                 not_visited.pop_front();
