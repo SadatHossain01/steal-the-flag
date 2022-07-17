@@ -144,8 +144,8 @@ inline bool isValid(int x, int y) {
 
 inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis,
                      int lastX, int lastY) {
-    cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2
-         << " " << lastX << " " << lastY << endl;
+    // cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2
+    //      << " " << lastX << " " << lastY << endl;
     //  x2 y2 is the target
     bool ret = false;
     int now = -1;
@@ -172,13 +172,13 @@ inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis,
         if (x1 != 0) now -= prefixSumCol[x1 - 1][y1];
         if (now == 0) ret = true;
     }
-    cerr << now << " " << (ret ? "true" : "false") << endl;
+    // cerr << now << " " << (ret ? "true" : "false") << endl;
     return ret;
 }
 
 void bfs(pair<int, int> s, vector<vector<int>>& dist) {
     visited.assign(height, vector<bool>(width, false));
-    dist.assign(height, vector<int>(width, 0));
+    dist.assign(height, vector<int>(width, INF));
     // parent.assign(height, vector<pair<int, int>>(width, {-1, -1}));
     queue<pair<int, int>> q;
 
@@ -286,7 +286,6 @@ struct Game {
                                                     //নিসে, ওকেই দায়িত্ব দাও
         }
         ign();
-        // cerr << "read flag done" << endl;
     }
 
     // game loop things
@@ -296,7 +295,6 @@ struct Game {
     }
 
     void readMyMinions() {
-        // cerr << "entered read my minion" << endl;
         isAlive.reset();
         cin >> myAliveMinionCnt;
         ign();
@@ -304,13 +302,10 @@ struct Game {
         for (int i = 0; i < myAliveMinionCnt; i++) {
             int id;
             cin >> id;
-            // cerr << i << endl;
             ign();
             isAlive[id] = true;
             myMinions[id].readMinion();
         }
-
-        // cerr << "reading done" << endl;
 
         if (n_minions == -1) {
             n_minions = myAliveMinionCnt;
@@ -320,7 +315,11 @@ struct Game {
             flagDefender = 0;
             int least_distance =
                 distFromMyBase[myMinions[0].posX][myMinions[0].posY];
-            for (int i = 1; i < n_minions; i++) {
+            // but 0 might be blocked somewhere
+            while (distFromMyBase[myMinions[flagDefender].posX]
+                                 [myMinions[flagDefender].posY] >= 1000)
+                flagDefender++;
+            for (int i = 0; i < n_minions; i++) {
                 int xx = myMinions[i].posX;
                 int yy = myMinions[i].posY;
                 if (distFromMyBase[xx][yy] < least_distance) {
@@ -331,8 +330,6 @@ struct Game {
             explorerMinions.erase(flagDefender);
         }
 
-        // cerr << "Part 1 done" << endl;
-
         if (mandatoryCarrier == -1 || !isAlive[mandatoryCarrier]) {
             // choose the minion that is the closest to opponent flag
             distOptional = distFromOppBase;
@@ -341,9 +338,10 @@ struct Game {
             int least_distance = -1;
             for (int i = 0; i < n_minions; i++) {
                 if (!isAlive[i]) continue;
-                if (myAliveMinionCnt >= 2 && i == flagDefender) continue;
                 int xx = myMinions[i].posX;
                 int yy = myMinions[i].posY;
+                if (distOptional[xx][yy] >= 1000) continue;
+                if (myAliveMinionCnt >= 2 && i == flagDefender) continue;
                 if (least_distance == -1 ||
                     distOptional[xx][yy] < least_distance) {
                     mandatoryCarrier = i;
@@ -352,8 +350,6 @@ struct Game {
             }
             explorerMinions.erase(mandatoryCarrier);
         }
-
-        // cerr << "Part 2 done" << endl;
 
         if (!isAlive[flagDefender] && myAliveMinionCnt >= 2) {
             // if there are >= 2 minions, then one can be flag defender,
@@ -364,9 +360,10 @@ struct Game {
             int least_distance = -1;
             for (int i = 0; i < n_minions; i++) {
                 if (!isAlive[i]) continue;
-                if (i == mandatoryCarrier) continue;
                 int xx = myMinions[i].posX;
                 int yy = myMinions[i].posY;
+                if (i == mandatoryCarrier) continue;
+                if (distOptional[xx][yy] >= 1000) continue;
                 if (least_distance == -1 ||
                     distOptional[xx][yy] < least_distance) {
                     flagDefender = i;
@@ -375,8 +372,10 @@ struct Game {
             }
             explorerMinions.erase(mandatoryCarrier);
         }
-
-        // cerr << "Part 3 done" << endl;
+        if (explorerMinions.count(mandatoryCarrier))
+            explorerMinions.erase(mandatoryCarrier);
+        if (explorerMinions.count(flagDefender))
+            explorerMinions.erase(flagDefender);
     }
 
     void readOppMinions() {
@@ -475,7 +474,7 @@ struct Game {
         vector<int> v;
         // fixing the priorities
         v.push_back(mandatoryCarrier);
-        v.push_back(flagDefender);
+        if (flagDefender != mandatoryCarrier) v.push_back(flagDefender);
         for (int i = 0; i < n_minions; i++) {
             auto it = find(v.begin(), v.end(), i);
             if (it == v.end()) v.push_back(i);
@@ -490,16 +489,24 @@ struct Game {
             pair<int, int> a, d, f;
             calculateVisibleMinions(i, a, d, f, last);
 
-            cerr << "ID: " << i << endl;
+            cerr << "ID: " << i << ", ";
+            if (i == mandatoryCarrier)
+                cerr << "mandatory carrier" << endl;
+            else if (i == flagDefender)
+                cerr << "flag defender" << endl;
+            else
+                cerr << "explorer" << endl;
+
             // cerr << distFromMyBase[xx][yy] << " " <<
             // distFromOppBase[xx][yy]
             //      << endl;
-            cerr << a.first << " " << a.second << " " << d.first << " "
-                 << d.second << " " << f.first << " " << f.second << endl;
+
+            cerr << "{" << a.first << ", " << a.second << "}, {" << d.first
+                 << ", " << d.second << "}, {" << f.first << ", " << f.second
+                 << "}" << endl;
             moveDone = false;
 
             if (i == mandatoryCarrier) {
-                cerr << "mandatory carrier" << endl;
                 if (oppFlagCarrier == mandatoryCarrier) {
                     // already has the opp flag with it
                     if (!moveDone && (d.first == 0 && d.second > 0 &&
@@ -585,7 +592,6 @@ struct Game {
             }
 
             else if (i == flagDefender) {
-                cerr << "flag defender" << endl;
                 // আগে নিজে flag এর কাছে পৌঁছায় নাও
                 // or no casualty
                 if (!askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last) ||
@@ -628,7 +634,9 @@ struct Game {
 
             else if (explorerMinions.count(i)) {
                 //৫ টা থাকলে দুইটা পুরা একসাথে চলে, এটা ঠিক করতে হবে
-                cerr << "explorer minion" << endl;
+                // this proper coin distribution is important, implement this
+                // soon
+
                 // explorer দের মারামারি করার দরকার নাই, unless
                 // myFlagCarrier কে পায়
                 if (myScore >= powerups[0].price && a.second > 0 &&
