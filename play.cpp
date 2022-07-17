@@ -77,8 +77,7 @@ struct Coin {
 struct Operation {
     opTypes ty;
     int id, x, y;
-    Operation(opTypes o, int id, int x = -1, int y = -1)
-        : ty(o), id(id), x(x), y(y) {}
+    Operation(opTypes o, int id, int x = -1, int y = -1) : ty(o), id(id), x(x), y(y) {}
     void print() {
         if (ty == MOVE)
             cout << "MOVE " << id << " " << x << " " << y;
@@ -112,8 +111,7 @@ void readGrid() {
             if (col == 0)
                 prefixSumRow[row][col] = (grid[row][col] == '#');
             else
-                prefixSumRow[row][col] =
-                    prefixSumRow[row][col - 1] + (grid[row][col] == '#');
+                prefixSumRow[row][col] = prefixSumRow[row][col - 1] + (grid[row][col] == '#');
         }
     }
     for (int col = 0; col < width; col++) {
@@ -121,8 +119,7 @@ void readGrid() {
             if (row == 0)
                 prefixSumCol[row][col] = (grid[row][col] == '#');
             else
-                prefixSumCol[row][col] =
-                    prefixSumCol[row - 1][col] + (grid[row][col] == '#');
+                prefixSumCol[row][col] = prefixSumCol[row - 1][col] + (grid[row][col] == '#');
         }
     }
 }
@@ -142,8 +139,7 @@ inline bool isValid(int x, int y) {
     return x >= 0 && x < height && y >= 0 && y < width && grid[x][y] == '.';
 }
 
-inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis,
-                     int lastX, int lastY) {
+inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int lastX, int lastY) {
     // cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2
     //      << " " << lastX << " " << lastY << endl;
     //  x2 y2 is the target
@@ -219,10 +215,8 @@ void dfs(int x, int y) {
 
 void init() {
     // explorer minions will just explore for more and more coins
-    leftToVisit.assign(
-        height,
-        vector<bool>(width,
-                     true));  // everything is left to visit at the start
+    leftToVisit.assign(height, vector<bool>(width,
+                                            true));  // everything is left to visit at the start
     int startX = myFlagBaseX, startY = myFlagBaseY;
     int highestDistance = distFromOppBase[startX][startY];
     // starting cell should better be not around both bases, as those coins will
@@ -233,9 +227,8 @@ void init() {
             if (distFromMyBase[i][j] + distFromOppBase[i][j] +
                     min(distFromMyBase[i][j], distFromOppBase[i][j]) * 2 >
                 highestDistance) {
-                highestDistance =
-                    distFromMyBase[i][j] + distFromOppBase[i][j] +
-                    min(distFromMyBase[i][j], distFromOppBase[i][j]) * 2;
+                highestDistance = distFromMyBase[i][j] + distFromOppBase[i][j] +
+                                  min(distFromMyBase[i][j], distFromOppBase[i][j]) * 2;
                 startX = i;
                 startY = j;
             }
@@ -313,11 +306,10 @@ struct Game {
             // need a flag defender
             // choose the minion that is closest to my flag (my base)
             flagDefender = 0;
-            int least_distance =
-                distFromMyBase[myMinions[0].posX][myMinions[0].posY];
+            int least_distance = distFromMyBase[myMinions[0].posX][myMinions[0].posY];
             // but 0 might be blocked somewhere
-            while (distFromMyBase[myMinions[flagDefender].posX]
-                                 [myMinions[flagDefender].posY] >= 1000)
+            while (distFromMyBase[myMinions[flagDefender].posX][myMinions[flagDefender].posY] >=
+                   1000)
                 flagDefender++;
             for (int i = 0; i < n_minions; i++) {
                 int xx = myMinions[i].posX;
@@ -342,8 +334,7 @@ struct Game {
                 int yy = myMinions[i].posY;
                 if (distOptional[xx][yy] >= 1000) continue;
                 if (myAliveMinionCnt >= 2 && i == flagDefender) continue;
-                if (least_distance == -1 ||
-                    distOptional[xx][yy] < least_distance) {
+                if (least_distance == -1 || distOptional[xx][yy] < least_distance) {
                     mandatoryCarrier = i;
                     least_distance = distOptional[xx][yy];
                 }
@@ -364,18 +355,15 @@ struct Game {
                 int yy = myMinions[i].posY;
                 if (i == mandatoryCarrier) continue;
                 if (distOptional[xx][yy] >= 1000) continue;
-                if (least_distance == -1 ||
-                    distOptional[xx][yy] < least_distance) {
+                if (least_distance == -1 || distOptional[xx][yy] < least_distance) {
                     flagDefender = i;
                     least_distance = distOptional[xx][yy];
                 }
             }
             explorerMinions.erase(mandatoryCarrier);
         }
-        if (explorerMinions.count(mandatoryCarrier))
-            explorerMinions.erase(mandatoryCarrier);
-        if (explorerMinions.count(flagDefender))
-            explorerMinions.erase(flagDefender);
+        if (explorerMinions.count(mandatoryCarrier)) explorerMinions.erase(mandatoryCarrier);
+        if (explorerMinions.count(flagDefender)) explorerMinions.erase(flagDefender);
     }
 
     void readOppMinions() {
@@ -399,14 +387,13 @@ struct Game {
         // cerr << "Read Coins done" << endl;
     }
 
-    void takeOperation(opTypes t, int id, bool& marker, int x = -1,
-                       int y = -1) {
+    void takeOperation(opTypes t, int id, bool& marker, int x = -1, int y = -1) {
         operations.push_back(Operation(t, id, x, y));
         marker = true;
     }
 
-    bool askSameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis,
-                     int targetID, const Game& last) {
+    bool askSameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int targetID,
+                     const Game& last) {
         // cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " <<
         // y2
         //      << " " << (wantAdjAnalysis ? "true" : "false") << " "
@@ -422,10 +409,8 @@ struct Game {
             return sameLine(x1, y1, x2, y2, false, lastX, lastY);
     }
 
-    void calculateVisibleMinions(int id, pair<int, int>& affected,
-                                 pair<int, int>& death,
-                                 pair<int, int>& alreadyFrozen,
-                                 const Game& last) {
+    void calculateVisibleMinions(int id, pair<int, int>& affected, pair<int, int>& death,
+                                 pair<int, int>& alreadyFrozen, const Game& last) {
         // how many minions from both sides this minion of mine affects...
         affected = death = alreadyFrozen = {0, 0};
         int xx = myMinions[id].posX;
@@ -433,8 +418,7 @@ struct Game {
         // cerr << "ID: " << id << " position: " << xx << " " << yy << endl;
         for (int i = 0; i < n_minions; i++) {
             if (i == id || !isAlive[i]) continue;
-            bool ret = askSameLine(xx, yy, myMinions[i].posX, myMinions[i].posY,
-                                   false, i, last);
+            bool ret = askSameLine(xx, yy, myMinions[i].posX, myMinions[i].posY, false, i, last);
             if (ret) {
                 // cerr << "My: " << id << " and " << i << " in same line"
                 // << endl;
@@ -445,8 +429,7 @@ struct Game {
         }
         for (int i = 0; i < n_minions; i++) {
             if (!isOppVisible[i]) continue;
-            bool ret = askSameLine(xx, yy, oppMinions[i].posX,
-                                   oppMinions[i].posY, true, i, last);
+            bool ret = askSameLine(xx, yy, oppMinions[i].posX, oppMinions[i].posY, true, i, last);
             if (ret) {
                 // cerr << "Opp: " << id << " and " << i <<
                 // " in same line"
@@ -501,61 +484,47 @@ struct Game {
             // distFromOppBase[xx][yy]
             //      << endl;
 
-            cerr << "{" << a.first << ", " << a.second << "}, {" << d.first
-                 << ", " << d.second << "}, {" << f.first << ", " << f.second
-                 << "}" << endl;
+            cerr << "{" << a.first << ", " << a.second << "}, {" << d.first << ", " << d.second
+                 << "}, {" << f.first << ", " << f.second << "}" << endl;
             moveDone = false;
 
             if (i == mandatoryCarrier) {
                 if (oppFlagCarrier == mandatoryCarrier) {
                     // already has the opp flag with it
                     if (!moveDone && (d.first == 0 && d.second > 0 &&
-                                      myScore >= powerups[0].price &&
-                                      distFromMyBase[xx][yy] <= 15))
+                                      myScore >= powerups[0].price && distFromMyBase[xx][yy] <= 15))
                         takeOperation(FIRE, i, moveDone);
                     if (!moveDone &&
-                        (distFromMyBase[xx][yy] <= 10 &&
-                         myScore >= powerups[1].price &&
+                        (distFromMyBase[xx][yy] <= 10 && myScore >= powerups[1].price &&
                          a.second > 0))  // so close, so just freeze?
                         takeOperation(FREEZE, i, moveDone);
-                    if (!moveDone &&
-                        (a.first > 0 || firstTime || a.second == 0))
+                    if (!moveDone && (a.first > 0 || firstTime || a.second == 0))
                         takeOperation(MOVE, i, moveDone, myFlagBaseX,
                                       myFlagBaseY);  // no casualty
-                    if (!moveDone &&
-                        (myMinions[i].health <= 40 &&
-                         myScore >= powerups[0].price &&
-                         a.second > 0))  // if you are down on health,
-                                         // do not take any risk
+                    if (!moveDone && (myMinions[i].health <= 2 * powerups[0].damage &&
+                                      myScore >= powerups[0].price &&
+                                      a.second > 0))  // if you are down on health,
+                                                      // do not take any risk
                         takeOperation(FIRE, i, moveDone);
-                    if (!moveDone &&
-                        (myMinions[i].health < last.myMinions[i].health &&
-                         a.second > 0 &&
-                         myScore >= powerups[0].price))  // retaliate
+                    if (!moveDone && (myMinions[i].health < last.myMinions[i].health &&
+                                      a.second > 0 && myScore >= powerups[0].price))  // retaliate
                         takeOperation(FIRE, i, moveDone);
-                    if (!moveDone && (myMinions[i].health ==
-                                      last.myMinions[i].health))  // pacifism
-                        takeOperation(MOVE, i, moveDone, myFlagBaseX,
-                                      myFlagBaseY);
+                    if (!moveDone && (myMinions[i].health == last.myMinions[i].health))  // pacifism
+                        takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
                     // insert new moves here if found
                     if (!moveDone)  // if nothing has been done yet
-                        takeOperation(MOVE, i, moveDone, myFlagBaseX,
-                                      myFlagBaseY);
+                        takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
                 } else {
                     // so not got the flag yet
-                    bool ret = askSameLine(xx, yy, oppFlagX, oppFlagY, false,
-                                           -1, last);
+                    bool ret = askSameLine(xx, yy, oppFlagX, oppFlagY, false, -1, last);
                     if (ret) {  // so reached the same line as flag
                         if (a.second > 0) {
-                            if (!moveDone && last.myMinions[i].health ==
-                                                 myMinions[i].health) {
+                            if (!moveDone && last.myMinions[i].health == myMinions[i].health) {
                                 //আমাকে কিছু করতেসে না
-                                takeOperation(MOVE, i, moveDone, oppFlagX,
-                                              oppFlagY);
+                                takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             }
                             //আমাকে কিছু করতেসে এখন!
-                            if (!moveDone &&
-                                a.first == 0)  // flag ছিনিয়ে আনো :3
+                            if (!moveDone && a.first == 0)  // flag ছিনিয়ে আনো :3
                                 takeOperation(FIRE, i, moveDone);
                             if (!moveDone && a.first > 0) {  //আমার minion আছে
                                 //এই probability আসলে কম, but regardless
@@ -565,10 +534,9 @@ struct Game {
                                 bool alreadyFrozen = true;
                                 for (int i = 0; i < n_minions; i++) {
                                     if (!isOppVisible[i]) continue;
-                                    if (!askSameLine(
-                                            xx, yy, oppMinions[i].posX,
-                                            oppMinions[i].posY, false, -1,
-                                            last))  //এখন analysis দরকার নাই
+                                    if (!askSameLine(xx, yy, oppMinions[i].posX, oppMinions[i].posY,
+                                                     false, -1,
+                                                     last))  //এখন analysis দরকার নাই
                                         continue;
                                     if (oppMinions[i].timeout == 0) {
                                         alreadyFrozen = false;
@@ -578,13 +546,10 @@ struct Game {
                                 if (!alreadyFrozen)  // then freeze
                                     takeOperation(FREEZE, i, moveDone);
                                 else  // then just proceed
-                                    takeOperation(MOVE, i, moveDone, oppFlagX,
-                                                  oppFlagY);
+                                    takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             }
                         }
-                        if (!moveDone)
-                            takeOperation(MOVE, i, moveDone, oppFlagX,
-                                          oppFlagY);
+                        if (!moveDone) takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                     }
                     if (!moveDone)  // line এ যাওনাই, তাহলে যাও এখন
                         takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
@@ -594,8 +559,7 @@ struct Game {
             else if (i == flagDefender) {
                 // আগে নিজে flag এর কাছে পৌঁছায় নাও
                 // or no casualty
-                if (!askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last) ||
-                    firstTime)
+                if (!askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last) || firstTime)
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                 if (!moveDone && a.first > 0 && distFromOppBase[xx][yy] >= 30)
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
@@ -604,8 +568,7 @@ struct Game {
                     //এখন flag পড়ে আছে
                     // প্রথমে দেখো কেউ আসতেসে কিনা
                     if (!moveDone &&
-                        (a.second > 0 &&
-                         myScore >= powerups[0].price))  // someone coming
+                        (a.second > 0 && myScore >= powerups[0].price))  // someone coming
                         takeOperation(FIRE, i, moveDone);
                     if (!moveDone)  // nobody coming or আসলেও মারার টাকা নাই
                         takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
@@ -615,17 +578,14 @@ struct Game {
                     // flag নিয়ে যাইতেসে
                     if (myScore >= powerups[0].price) {
                         if (!moveDone &&
-                            askSameLine(xx, yy, myFlagX, myFlagY, true,
-                                        myFlagCarrier, last)) {
+                            askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last)) {
                             //এই minion-ই তো নিয়ে যাইতেসে
                             if (d.first == 0)
                                 takeOperation(FIRE, i, moveDone);
                             else
-                                takeOperation(MOVE, i, moveDone, myFlagX,
-                                              myFlagY);
+                                takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                         }
-                        if (!moveDone)
-                            takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
+                        if (!moveDone) takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                     }
                     if (!moveDone)  //টাকা নাই
                         takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
@@ -639,10 +599,8 @@ struct Game {
 
                 // explorer দের মারামারি করার দরকার নাই, unless
                 // myFlagCarrier কে পায়
-                if (myScore >= powerups[0].price && a.second > 0 &&
-                    myFlagCarrier != -1) {
-                    if (askSameLine(xx, yy, myFlagX, myFlagY, true,
-                                    myFlagCarrier, last))
+                if (myScore >= powerups[0].price && a.second > 0 && myFlagCarrier != -1) {
+                    if (askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last))
                         takeOperation(FIRE, i, moveDone);
                 }
                 if (!moveDone) {
@@ -671,8 +629,7 @@ struct Game {
                         }
                     }
                     if (dest == make_pair(-1, -1)) {
-                        cerr << "this should almost never happen though"
-                             << endl;
+                        cerr << "this should almost never happen though" << endl;
                         if (myFlagCarrier != -1)
                             dest = {myFlagX, myFlagY};
                         else
