@@ -506,9 +506,10 @@ struct Game {
                                       myScore >= powerups[0].price &&
                                       distFromMyBase[xx][yy] <= 15))
                         takeOperation(FIRE, i, moveDone);
-                    if (!moveDone && distFromMyBase[xx][yy] <= 10 &&
-                        myScore >=
-                            powerups[1].price)  // so close, so just freeze?
+                    if (!moveDone &&
+                        (distFromMyBase[xx][yy] <= 10 &&
+                         myScore >= powerups[1].price &&
+                         a.second > 0))  // so close, so just freeze?
                         takeOperation(FREEZE, i, moveDone);
                     if (!moveDone &&
                         (a.first > 0 || firstTime || a.second == 0))
@@ -516,9 +517,9 @@ struct Game {
                                       myFlagBaseY);  // no casualty
                     if (!moveDone &&
                         (myMinions[i].health <= 40 &&
-                         myScore >=
-                             powerups[0].price))  // if you are down on health,
-                                                  // do not take any risk
+                         myScore >= powerups[0].price &&
+                         a.second > 0))  // if you are down on health,
+                                         // do not take any risk
                         takeOperation(FIRE, i, moveDone);
                     if (!moveDone &&
                         (myMinions[i].health < last.myMinions[i].health &&
