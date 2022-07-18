@@ -602,32 +602,37 @@ struct Game {
             moveDone = false;
             // moveDone check will be done inside the function
             if (i == mandatoryCarrier) {
-                if (!firstTime && myScore >= powerups[0].price && !visibleOnes.empty() &&
-                    last.oppMinions[visibleOnes.front()].timeout == 1 &&
-                    a1.first == 0) {  //এতোক্ষণ frozen ছিল
-                    takeOperation(FIRE, i, moveDone);
-                }
-                if (oppFlagCarrier == mandatoryCarrier) {
-                    int movX = myFlagBaseX, movY = myFlagBaseY;
-                    if (a2.second > 0 && !firstTime) {
-                        int distNow = distFromMyBase[xx][yy];
-                        int score = INF;
-                        for (int dir = 0; dir < 4; dir++) {
-                            int newX = dx[dir] + xx;
-                            int newY = dy[dir] + yy;
-                            if (!isValid(newX, newY)) continue;
-                            if (askSameLine(newX, newY, last.myMinions[i].posX, myMinions[i].posY,
-                                            false, -1, last))
-                                continue;
-                            if (distFromMyBase[newX][newY] >= distNow - 1 + 5)
-                                continue;
-                            else if (distFromMyBase[newX][newY] < score) {
-                                score = distFromMyBase[newX][newY];
-                                movX = newX;
-                                movY = newY;
-                            }
+                //আচ্ছা এখন এই approach টা নেই, যদি আমি flag-bearer হই, তাহলে কাউরে পাইলেই freeze
+                //করবো আর যত পারি আঁকাবাঁকা রাস্তায় চলবো
+                int movX = myFlagBaseX, movY = myFlagBaseY;
+                if (oppFlagCarrier == -1) movX = oppFlagX, oppFlagY;
+                if (a2.second > 0 && !firstTime) {
+                    int distNow = distFromMyBase[xx][yy];
+                    int score = INF;
+                    for (int dir = 0; dir < 4; dir++) {
+                        int newX = dx[dir] + xx;
+                        int newY = dy[dir] + yy;
+                        if (!isValid(newX, newY)) continue;
+                        if (askSameLine(newX, newY, last.myMinions[i].posX, myMinions[i].posY,
+                                        false, -1, last))
+                            continue;
+                        // if (distFromMyBase[newX][newY] >= distNow - 1 + 5)
+                        //     continue;
+                        else if (distFromMyBase[newX][newY] < score) {
+                            score = distFromMyBase[newX][newY];
+                            movX = newX;
+                            movY = newY;
                         }
                     }
+                }
+
+                if (oppFlagCarrier == mandatoryCarrier) {
+                    if (f2.second < a2.second && myScore >= powerups[1].price)
+                        takeOperation(FREEZE, i, moveDone);
+                    else
+                        takeOperation(MOVE, i, moveDone, movX, movY);
+                    //উপরের দুই মুভের যেকোনো একটাই কিন্তু হবে সবসময়
+
                     // already has the opp flag with it
                     if (d1.first == 0 && d1.second > 0 && myScore >= powerups[0].price)
                         takeOperation(FIRE, i, moveDone);
@@ -670,6 +675,20 @@ struct Game {
                     takeOperation(MOVE, i, moveDone, movX, movY);
                 }
                 else {
+                    //এখানেও universal freeze apply করবো কিনা এটা একটু পরে দেখতেসি
+                    if (askSameLine(xx, yy, oppFlagX, oppFlagY, false, -1, last)) {
+                        if (f2.second < a2.second && myScore >= powerups[1].price)
+                            takeOperation(FREEZE, i, moveDone);
+                        else
+                            takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
+                        //উপরের দুই মুভের যেকোনো একটাই কিন্তু হবে সবসময়
+                    }
+
+                    if (!firstTime && myScore >= powerups[0].price && !visibleOnes.empty() &&
+                        last.oppMinions[visibleOnes.front()].timeout == 1 &&
+                        a1.first == 0) {  //এতোক্ষণ frozen ছিল
+                        takeOperation(FIRE, i, moveDone);
+                    }
                     // so not got the flag yet
                     if (f2.second > 0 && a1.first == 0 &&
                         myScore >=
