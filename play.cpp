@@ -145,6 +145,7 @@ inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int l
     //  x2 y2 is the target
     bool ret = false;
     int now = -1;
+    if (x1 == x2 && y1 == y2) return true;
     // first ensure সে এখানে বসে নাই ইচ্ছা করে, কারণ তা হলে যাওয়ার কয়টা জায়গা আছে
     // matter করে না, বসেই থাকবে যেহেতু
     if (wantAdjAnalysis && (lastX == -1 || (x2 != lastX || y2 != lastY))) {
@@ -410,7 +411,8 @@ struct Game {
     }
 
     void calculateVisibleMinions(int id, pair<int, int>& affected, pair<int, int>& death,
-                                 pair<int, int>& alreadyFrozen, const Game& last) {
+                                 pair<int, int>& alreadyFrozen, const Game& last,
+                                 bool wantAnalysis) {
         // how many minions from both sides this minion of mine affects...
         affected = death = alreadyFrozen = {0, 0};
         int xx = myMinions[id].posX;
@@ -429,7 +431,8 @@ struct Game {
         }
         for (int i = 0; i < n_minions; i++) {
             if (!isOppVisible[i]) continue;
-            bool ret = askSameLine(xx, yy, oppMinions[i].posX, oppMinions[i].posY, true, i, last);
+            bool ret =
+                askSameLine(xx, yy, oppMinions[i].posX, oppMinions[i].posY, wantAnalysis, i, last);
             if (ret) {
                 // cerr << "Opp: " << id << " and " << i <<
                 // " in same line"
@@ -439,6 +442,18 @@ struct Game {
                 if (oppMinions[i].timeout > 0) alreadyFrozen.second++;
             }
         }
+    }
+
+    vector<int> getVisibleMinions(int id, const Game& last) {
+        vector<int> v;
+        int xx = myMinions[id].posX;
+        int yy = myMinions[id].posY;
+        for (int i = 0; i < n_minions; i++) {
+            if (!isOppVisible[i]) continue;
+            if (askSameLine(xx, yy, oppMinions[i].posX, oppMinions[i].posY, false, -1, last))
+                v.push_back(i);
+        }
+        return v;
     }
 
     void printOperations() {
@@ -469,46 +484,72 @@ struct Game {
             if (!isAlive[i]) continue;  // dead already
             int xx = myMinions[i].posX;
             int yy = myMinions[i].posY;
-            pair<int, int> a, d, f;
-            calculateVisibleMinions(i, a, d, f, last);
+            pair<int, int> a1, d1, f1, a2, d2, f2;
+            calculateVisibleMinions(i, a1, d1, f1, last, true);   // with adj analysis
+            calculateVisibleMinions(i, a2, d2, f2, last, false);  // without adj analysis
+            auto visibleOnes = getVisibleMinions(i, last);
+            int maxOppHealth = 0, needed_fire_spell = 0;
+            if (!visibleOnes.empty()) {
+                maxOppHealth = oppMinions[visibleOnes.front()].health;
+                for (int k = 1; k < visibleOnes.size(); k++)
+                    maxOppHealth = max(maxOppHealth, oppMinions[visibleOnes[k]].health);
+                needed_fire_spell = (maxOppHealth + powerups[0].damage - 1) / powerups[0].damage;
+            }
 
             cerr << "ID: " << i << ", ";
             if (i == mandatoryCarrier)
-                cerr << "mandatory carrier" << endl;
+                cerr << "mandatory carrier ";
             else if (i == flagDefender)
-                cerr << "flag defender" << endl;
+                cerr << "flag defender ";
             else
-                cerr << "explorer" << endl;
+                cerr << "explorer ";
+            cerr << xx << " " << yy << endl;
 
             // cerr << distFromMyBase[xx][yy] << " " <<
             // distFromOppBase[xx][yy]
             //      << endl;
 
-            cerr << "{" << a.first << ", " << a.second << "}, {" << d.first << ", " << d.second
-                 << "}, {" << f.first << ", " << f.second << "}" << endl;
+            cerr << "{" << a1.first << ", " << a1.second << "}, {" << d1.first << ", " << d1.second
+                 << "}, {" << f1.first << ", " << f1.second << "}" << endl;
+            cerr << "{" << a2.first << ", " << a2.second << "}, {" << d2.first << ", " << d2.second
+                 << "}, {" << f2.first << ", " << f2.second << "}" << endl;
+            cerr << maxOppHealth << " " << needed_fire_spell << endl;
             moveDone = false;
 
             if (i == mandatoryCarrier) {
                 if (oppFlagCarrier == mandatoryCarrier) {
                     // already has the opp flag with it
-                    if (!moveDone && (d.first == 0 && d.second > 0 &&
-                                      myScore >= powerups[0].price && distFromMyBase[xx][yy] <= 15))
+                    if (!moveDone &&
+                        (d1.first == 0 && d1.second > 0 && myScore >= powerups[0].price))
                         takeOperation(FIRE, i, moveDone);
                     if (!moveDone &&
                         (distFromMyBase[xx][yy] <= 10 && myScore >= powerups[1].price &&
-                         a.second > 0))  // so close, so just freeze?
+                         a1.second > 0))  // so close, so just freeze?
                         takeOperation(FREEZE, i, moveDone);
-                    if (!moveDone && (a.first > 0 || firstTime || a.second == 0))
+                    if (!moveDone &&
+                        (!firstTime && myMinions[i].health < last.myMinions[i].health &&
+                         d1.first == 0 && a2.second > 0 && !visibleOnes.empty())) {  // retaliate
+                        if (f1.second == 0 && myScore >= powerups[1].price && a1.second > 0)
+                            takeOperation(FREEZE, i, moveDone);
+                        else if (myScore >= powerups[0].price * needed_fire_spell)
+                            takeOperation(FIRE, i, moveDone);
+                        else
+                            takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
+                    }
+                    if (!moveDone && (a1.first > 0 || firstTime || a1.second == 0))
                         takeOperation(MOVE, i, moveDone, myFlagBaseX,
                                       myFlagBaseY);  // no casualty
                     if (!moveDone && (myMinions[i].health <= 2 * powerups[0].damage &&
                                       myScore >= powerups[0].price &&
-                                      a.second > 0))  // if you are down on health,
-                                                      // do not take any risk
-                        takeOperation(FIRE, i, moveDone);
-                    if (!moveDone && (myMinions[i].health < last.myMinions[i].health &&
-                                      a.second > 0 && myScore >= powerups[0].price))  // retaliate
-                        takeOperation(FIRE, i, moveDone);
+                                      a2.second > 0)) {  // if you are down on health,
+                                                         // do not take any risk
+                        if (myScore >= powerups[0].price * needed_fire_spell)
+                            takeOperation(FIRE, i, moveDone);
+                        else if (myScore >= powerups[1].price)
+                            takeOperation(FREEZE, i, moveDone);
+                        else
+                            takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
+                    }
                     if (!moveDone && (myMinions[i].health == last.myMinions[i].health))  // pacifism
                         takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
                     // insert new moves here if found
@@ -516,17 +557,29 @@ struct Game {
                         takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
                 } else {
                     // so not got the flag yet
+                    if (!moveDone &&
+                        (!firstTime && myMinions[i].health < last.myMinions[i].health &&
+                         d1.first == 0 && a2.second > 0 && !visibleOnes.empty())) {  // retaliate
+                        if (f1.second == 0 && myScore >= powerups[1].price && a1.second > 0)
+                            takeOperation(FREEZE, i, moveDone);
+                        else if (myScore >= powerups[0].price * needed_fire_spell)
+                            takeOperation(FIRE, i, moveDone);
+                        else
+                            takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
+                    }
                     bool ret = askSameLine(xx, yy, oppFlagX, oppFlagY, false, -1, last);
                     if (ret) {  // so reached the same line as flag
-                        if (a.second > 0) {
+                        if (a2.second > 0) {
                             if (!moveDone && last.myMinions[i].health == myMinions[i].health) {
                                 //আমাকে কিছু করতেসে না
                                 takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             }
                             //আমাকে কিছু করতেসে এখন!
-                            if (!moveDone && a.first == 0)  // flag ছিনিয়ে আনো :3
+                            if (!moveDone && d1.first == 0 &&
+                                myScore >=
+                                    needed_fire_spell * powerups[0].price)  // flag ছিনিয়ে আনো :3
                                 takeOperation(FIRE, i, moveDone);
-                            if (!moveDone && a.first > 0) {  //আমার minion আছে
+                            if (!moveDone && myScore >= powerups[1].price) {  //আমার minion আছে
                                 //এই probability আসলে কম, but regardless
                                 //বের করো flag কে পাহারা দিতেসে
                                 //তারা already frozen কি না, থাকলে তো আবার
@@ -561,7 +614,7 @@ struct Game {
                 // or no casualty
                 if (!askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last) || firstTime)
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
-                if (!moveDone && a.first > 0 &&
+                if (!moveDone && a1.first > 0 &&
                     distFromOppBase[myFlagX][myFlagY] >=
                         30)  // casualty হবে, প্লাস অনেক দূরেও আছি, মারামারি করার কী দরকার
                     takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
@@ -569,12 +622,24 @@ struct Game {
                 if (myFlagCarrier == -1) {
                     //এখন flag পড়ে আছে
                     // প্রথমে দেখো কেউ আসতেসে কিনা
-                    if (!moveDone && d.first == 0 && d.second > 0 &&
+                    if (!moveDone && d1.first == 0 && d1.second > 0 &&
                         myScore >= powerups[0].price)  //এখন মারলে নিশ্চিত মৃত্যু
                         takeOperation(FIRE, i, moveDone);
                     //চাইসিলাম আগে freeze করে then fire করতে, কিন্তু সেটা ভালো রেজাল্ট দিচ্ছে না
                     if (!moveDone &&
-                        (a.second > 0 && myScore >= powerups[0].price))  // someone coming
+                        (!firstTime && myMinions[i].health < last.myMinions[i].health &&
+                         d1.first == 0 && a2.second > 0 && !visibleOnes.empty())) {  // retaliate
+                        if (f1.second == 0 && myScore >= powerups[1].price && a1.second > 0)
+                            takeOperation(FREEZE, i, moveDone);
+                        else if (myScore >= powerups[0].price * needed_fire_spell)
+                            takeOperation(FIRE, i, moveDone);
+                        else
+                            takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
+                    }
+                    if (!moveDone) cerr << "yet " << visibleMinionCnt << endl;
+                    if (!moveDone &&
+                        (a1.second > 0 &&
+                         myScore >= needed_fire_spell * powerups[0].price))  // someone coming
                         takeOperation(FIRE, i, moveDone);
                     if (!moveDone)  // nobody coming or আসলেও মারার টাকা নাই
                         takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
@@ -582,21 +647,39 @@ struct Game {
 
                 else {
                     // flag নিয়ে যাইতেসে
-                    if (myScore >= powerups[0].price) {
-                        if (!moveDone &&
-                            askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last)) {
-                            //এই minion-ই তো নিয়ে যাইতেসে
-                            // again, freeze integrate করার আইডিয়া ভালো কাজ করতেসিলো না
-                            if (d.first == 0)
-                                takeOperation(FIRE, i, moveDone);
-                            else
-                                takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
-                        }
-                        if (!moveDone) takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
+                    if (!moveDone &&
+                        (!firstTime && myMinions[i].health < last.myMinions[i].health &&
+                         d1.first == 0 && a2.second > 0 && !visibleOnes.empty())) {  // retaliate
+                        if (f1.second == 0 && myScore >= powerups[1].price && a1.second > 0)
+                            takeOperation(FREEZE, i, moveDone);
+                        else if (myScore >= powerups[0].price * needed_fire_spell)
+                            takeOperation(FIRE, i, moveDone);
+                        else
+                            takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                     }
-                    if (!moveDone)  //টাকা নাই
+                    if (!moveDone &&
+                        (oppFlagCarrier != -1 &&
+                         distFromMyBase[oppFlagX][oppFlagY] <=
+                             distFromOppBase[myFlagX][myFlagY] - 10))  //কাছাকাছি চলে গেসে আমারটা
                         takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
+                    if (!moveDone &&
+                        (a1.second > 0 && myScore >= needed_fire_spell * powerups[0].price)) {
+                        takeOperation(FIRE, i, moveDone);
+                    }
+                    if (!moveDone && d1.first == 0 &&
+                        askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last) &&
+                        myScore >= (((oppMinions[myFlagCarrier].health + powerups[0].damage - 1) /
+                                     powerups[0].damage) *
+                                    powerups[0].price))
+                        takeOperation(FIRE, i, moveDone);
+                    if (!moveDone && oppFlagCarrier != -1 &&
+                        distFromMyBase[oppFlagX][oppFlagY] - distFromOppBase[myFlagX][myFlagY] <=
+                            5 &&
+                        a1.second > 0)
+                        takeOperation(FREEZE, i, moveDone);
+                    if (!moveDone) takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                 }
+                if (!moveDone) takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
             }
 
             else if (explorerMinions.count(i)) {
@@ -606,7 +689,16 @@ struct Game {
 
                 // explorer দের মারামারি করার দরকার নাই, unless
                 // myFlagCarrier কে পায়
-                if (myScore >= powerups[0].price && a.second > 0 && myFlagCarrier != -1) {
+                if (!moveDone &&
+                    (!firstTime && myMinions[i].health < last.myMinions[i].health &&
+                     d1.first == 0 && a1.second > 0 && !visibleOnes.empty())) {  // retaliate
+                    if (f1.second == 0 && myScore >= powerups[1].price)
+                        takeOperation(FREEZE, i, moveDone);
+                    else if (myScore >= powerups[0].price * needed_fire_spell)
+                        takeOperation(FIRE, i, moveDone);
+                }
+                if (!moveDone && myScore >= powerups[0].price && d1.first == 0 &&
+                    myFlagCarrier != -1) {
                     if (askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last))
                         takeOperation(FIRE, i, moveDone);
                 }
