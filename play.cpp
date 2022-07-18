@@ -296,8 +296,10 @@ struct Game {
             cin >> oppFlagX >> oppFlagY;
             cin >> oppFlagCarrier;
             if (oppFlagCarrier != -1 && oppFlagCarrier != mandatoryCarrier)
-                mandatoryCarrier = oppFlagCarrier;  //না চাইতেই নিয়ে যখন
-                                                    //নিসে, ওকেই দায়িত্ব দাও
+                if (oppFlagCarrier == flagDefender) flagDefender = mandatoryCarrier;
+            mandatoryCarrier = oppFlagCarrier;  //না চাইতেই নিয়ে যখন
+                                                //নিসে, ওকেই দায়িত্ব দাও
+            if (explorerMinions.count(mandatoryCarrier)) explorerMinions.erase(mandatoryCarrier);
         }
         ign();
     }
@@ -347,6 +349,7 @@ struct Game {
             // explorer দের কাজ distribute করে দেয়া লাগবে properly
             cellsToExplore.resize(n_minions);
             assignedExploration.assign(n_minions, -1);
+
             const int sz = not_visited.size() / (n_minions - 2);
             // cerr << "Size: " << sz << endl;
             for (int idx = 0; idx < n_minions - 2; idx++) {
@@ -369,6 +372,7 @@ struct Game {
 
         if (mandatoryCarrier == -1 || !isAlive[mandatoryCarrier]) {
             // choose the minion that is the closest to opponent flag
+            cerr << "mandatory carrier dead" << endl;
             distOptional = distFromOppBase;
             if (oppFlagBaseX != oppFlagX || oppFlagBaseY != oppFlagY)
                 bfs({oppFlagX, oppFlagY}, distOptional);
@@ -390,6 +394,7 @@ struct Game {
         if (!isAlive[flagDefender] && myAliveMinionCnt >= 2) {
             // if there are >= 2 minions, then one can be flag defender,
             // right? choose the minion that is the closest to my flag
+            cerr << "flag defender dead" << endl;
             distOptional = distFromMyBase;
             if (myFlagBaseX != myFlagX || myFlagBaseY != myFlagY)
                 bfs({myFlagX, myFlagY}, distOptional);
