@@ -578,6 +578,26 @@ struct Game {
                     takeOperation(FIRE, i, moveDone);
                 }
                 if (oppFlagCarrier == mandatoryCarrier) {
+                    int movX = myFlagBaseX, movY = myFlagBaseY;
+                    if (a2.second > 0 && !firstTime) {
+                        int distNow = distFromMyBase[xx][yy];
+                        int score = INF;
+                        for (int dir = 0; dir < 4; dir++) {
+                            int newX = dx[dir] + xx;
+                            int newY = dy[dir] + yy;
+                            if (!isValid(newX, newY)) continue;
+                            if (askSameLine(newX, newY, last.myMinions[i].posX, myMinions[i].posY,
+                                            false, -1, last))
+                                continue;
+                            if (distFromMyBase[newX][newY] >= distNow - 1 + 5)
+                                continue;
+                            else if (distFromMyBase[newX][newY] < score) {
+                                score = distFromMyBase[newX][newY];
+                                movX = newX;
+                                movY = newY;
+                            }
+                        }
+                    }
                     // already has the opp flag with it
                     if (d1.first == 0 && d1.second > 0 && myScore >= powerups[0].price)
                         takeOperation(FIRE, i, moveDone);
@@ -597,11 +617,11 @@ struct Game {
                         else if (myScore >= powerups[0].price * needed_fire_spell)
                             takeOperation(FIRE, i, moveDone);
                         else
-                            takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
+                            takeOperation(MOVE, i, moveDone, movX, movY);
                     }
                     if (a1.first > 0 || firstTime || a1.second == 0)
-                        takeOperation(MOVE, i, moveDone, myFlagBaseX,
-                                      myFlagBaseY);  // no casualty
+                        takeOperation(MOVE, i, moveDone, movX,
+                                      movY);  // no casualty
                     if (myMinions[i].health <= 2 * powerups[0].damage &&
                         myScore >= powerups[0].price &&
                         a2.second > 0) {  // if you are down on health,
@@ -611,13 +631,13 @@ struct Game {
                         else if (myScore >= powerups[1].price)
                             takeOperation(FREEZE, i, moveDone);
                         else
-                            takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
+                            takeOperation(MOVE, i, moveDone, movX, movY);
                     }
                     if (myMinions[i].health == last.myMinions[i].health)  // pacifism
-                        takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
+                        takeOperation(MOVE, i, moveDone, movX, movY);
                     // insert new moves here if found
                     // if nothing has been done yet
-                    takeOperation(MOVE, i, moveDone, myFlagBaseX, myFlagBaseY);
+                    takeOperation(MOVE, i, moveDone, movX, movY);
                 } else {
                     // so not got the flag yet
                     if (f2.second > 0 && a1.first == 0 &&
