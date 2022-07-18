@@ -601,33 +601,52 @@ struct Game {
             // cerr << maxOppHealth << " " << needed_fire_spell << endl;
             moveDone = false;
             // moveDone check will be done inside the function
+
+            int movX = -1, movY = -1;
             if (i == mandatoryCarrier) {
+                if (oppFlagCarrier == -1)
+                    movX = oppFlagX, movY = oppFlagY;
+                else
+                    movX = myFlagBaseX, movY = myFlagBaseY;
+            }
+            else if (i == flagDefender)
+                movX = myFlagX, movY = myFlagY;
+
+            if (a2.second > 0 && !firstTime) {
+                int distNow = distFromMyBase[xx][yy];
+                int score = INF;
+                for (int dir = 0; dir < 4; dir++) {
+                    int newX = dx[dir] + xx;
+                    int newY = dy[dir] + yy;
+                    if (!isValid(newX, newY)) continue;
+                    if (askSameLine(newX, newY, last.myMinions[i].posX, myMinions[i].posY, false,
+                                    -1, last))
+                        continue;
+                    if (i == oppFlagCarrier && distFromMyBase[newX][newY] >= distNow - 1 + 10)
+                        continue;
+                    else if (distFromMyBase[newX][newY] < score) {
+                        score = distFromMyBase[newX][newY];
+                        movX = newX;
+                        movY = newY;
+                    }
+                }
+            }
+
+            if (i == mandatoryCarrier) {
+                if (oppFlagCarrier == mandatoryCarrier ||
+                    askSameLine(xx, yy, oppFlagX, oppFlagY, false, -1, last)) {
+                    if (a2.second > f2.second && myScore >= powerups[1].price)
+                        takeOperation(FREEZE, i, moveDone);
+                    else
+                        takeOperation(MOVE, i, moveDone, movX, movY);
+                }
+
                 if (!firstTime && myScore >= powerups[0].price && !visibleOnes.empty() &&
                     last.oppMinions[visibleOnes.front()].timeout == 1 &&
                     a1.first == 0) {  //এতোক্ষণ frozen ছিল
                     takeOperation(FIRE, i, moveDone);
                 }
                 if (oppFlagCarrier == mandatoryCarrier) {
-                    int movX = myFlagBaseX, movY = myFlagBaseY;
-                    if (a2.second > 0 && !firstTime) {
-                        int distNow = distFromMyBase[xx][yy];
-                        int score = INF;
-                        for (int dir = 0; dir < 4; dir++) {
-                            int newX = dx[dir] + xx;
-                            int newY = dy[dir] + yy;
-                            if (!isValid(newX, newY)) continue;
-                            if (askSameLine(newX, newY, last.myMinions[i].posX, myMinions[i].posY,
-                                            false, -1, last))
-                                continue;
-                            if (distFromMyBase[newX][newY] >= distNow - 1 + 5)
-                                continue;
-                            else if (distFromMyBase[newX][newY] < score) {
-                                score = distFromMyBase[newX][newY];
-                                movX = newX;
-                                movY = newY;
-                            }
-                        }
-                    }
                     // already has the opp flag with it
                     if (d1.first == 0 && d1.second > 0 && myScore >= powerups[0].price)
                         takeOperation(FIRE, i, moveDone);
@@ -792,6 +811,8 @@ struct Game {
                     if (a1.second > 0 && myScore >= needed_fire_spell * powerups[0].price) {
                         takeOperation(FIRE, i, moveDone);
                     }
+                    else if (myScore >= powerups[1].price && a1.second > 0)
+                        takeOperation(FREEZE, i, moveDone);
                     if (a1.first == 0 &&
                         askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last) &&
                         myScore >= (((oppMinions[myFlagCarrier].health + powerups[0].damage - 1) /
@@ -815,8 +836,11 @@ struct Game {
                     last.oppMinions[visibleOnes.front()].timeout == 1 &&
                     a1.first == 0)  //এতোক্ষণ frozen ছিল
                     takeOperation(FIRE, i, moveDone);
+                // retaliation is costly, no need to adopt it if you can evade
                 if (!firstTime && myMinions[i].health < last.myMinions[i].health && d1.first == 0 &&
                     a1.second > 0 && !visibleOnes.empty()) {  // retaliate
+                    if (movX != -1 && myAliveMinionCnt >= 2)
+                        takeOperation(MOVE, i, moveDone, movX, movY);
                     if (f1.second == 0 && myScore >= powerups[1].price &&
                         myMinions[i].health < oppMinions[visibleOnes.front()].health)
                         takeOperation(FREEZE, i, moveDone);
