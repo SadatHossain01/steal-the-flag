@@ -25,7 +25,6 @@ vector<string> grid;
 vector<pair<int, int>> not_visited;
 set<int> explorerMinions;
 int myFlagBaseX, myFlagBaseY, oppFlagBaseX, oppFlagBaseY;
-pair<int, int> destForMandatoryCarrier;  // path change করলে track রাখার জন্য
 // this is for different calls of bfs()
 vector<vector<bool>> visited;
 vector<int> assignedExploration;
@@ -37,7 +36,7 @@ vector<vector<int>> distFromMyBase, distFromOppBase, distOptional;
 // checking x same or y same is not enough
 // there can be walls
 vector<vector<int>> prefixSumRow, prefixSumCol;
-vector<vector<pair<int, int>>> parentForMyBase;
+//  vector<vector<pair<int, int>>> parent;
 enum opTypes { MOVE, FIRE, FREEZE, MINE, WAIT };
 
 int mandatoryCarrier = -1, flagDefender = -1;
@@ -76,14 +75,11 @@ struct Minion {
     // int id; this is basically the array index
     int posX, posY, health, timeout;
     // read the id first, and then call minion[id].readMinion()
-    inline void readMinion(bool isMine)
+    inline void readMinion()
     {
         cin >> posX >> posY >> health >> timeout;
         ign();
         pair<int, int> p = {posX, posY};
-        if (isMine && p == destForMandatoryCarrier) {
-            destForMandatoryCarrier = {myFlagBaseX, myFlagBaseY};  //পৌঁছায়ে গেসো temp path এর end এ
-        }
         for (int i = 0; i < n_minions - 2; i++) leftToVisit[posX][posY] = false;
         for (int i = 0; i < n_minions; i++) {
             if (posX == assignedCoins[i].posX &&
@@ -202,11 +198,11 @@ inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int l
     return ret;
 }
 
-void bfs(pair<int, int> s, vector<vector<int>>& dist, bool doPathParentSave = false)
+void bfs(pair<int, int> s, vector<vector<int>>& dist)
 {
     visited.assign(height, vector<bool>(width, false));
     dist.assign(height, vector<int>(width, INF));
-    if (doPathParentSave) parentForMyBase.assign(height, vector<pair<int, int>>(width, {-1, -1}));
+    // parent.assign(height, vector<pair<int, int>>(width, {-1, -1}));
     queue<pair<int, int>> q;
 
     dist[s.first][s.second] = 0;
@@ -215,6 +211,7 @@ void bfs(pair<int, int> s, vector<vector<int>>& dist, bool doPathParentSave = fa
     while (!q.empty()) {
         pair<int, int> now = q.front();
         q.pop();
+        if (visited[now.first][now.second]) continue;
         visited[now.first][now.second] = true;
         vector<int> v{0, 1, 2, 3};
         random_shuffle(v.begin(), v.end());
@@ -224,34 +221,10 @@ void bfs(pair<int, int> s, vector<vector<int>>& dist, bool doPathParentSave = fa
 
             if (!isValid(newX, newY) || visited[newX][newY]) continue;
             dist[newX][newY] = dist[now.first][now.second] + 1;
-            parentForMyBase[newX][newY] = {now.first, now.second};
+            // parent[newX][newY] = {now.first, now.second};
             q.push({newX, newY});
         }
     }
-}
-
-vector<pair<int, int>> giveCellsOfADistance(pair<int, int> s, int dist)
-{
-    visited.assign(height, vector<bool>(width, false));
-    vector<pair<int, int>> v;
-    queue<pair<int, int>> q;
-    q.push(s);
-    for (int d = 0; d <= dist; d++) {
-        int curSz = q.size();
-        for (int j = 0; j < curSz; j++) {
-            pair<int, int> now = q.front();
-            q.pop();  // this is of d distance from source
-            visited[now.first][now.second] = true;
-            if (d == dist) v.push_back(now);
-            for (int dir = 0; dir < 4; dir++) {
-                int newX = dx[dir] + now.first;
-                int newY = dy[dir] + now.second;
-                if (!isValid(newX, newY) || visited[newX][newY]) continue;
-                q.push({newX, newY});
-            }
-        }
-    }
-    return v;
 }
 
 void dfs(int x, int y)
@@ -285,7 +258,6 @@ void init()
     cerr << "DFS Start: " << startX << " " << startY << endl;
     dfs(startX, startY);
     leftToVisit.assign(height, vector<bool>(width, true));  //শুরুতে সবাই left to visit
-    destForMandatoryCarrier = {myFlagBaseX, myFlagBaseY};
     // cerr << "dfs done" << endl;
 }
 
@@ -328,7 +300,6 @@ struct Game {
             mandatoryCarrier = oppFlagCarrier;  //না চাইতেই নিয়ে যখন
                                                 //নিসে, ওকেই দায়িত্ব দাও
             if (explorerMinions.count(mandatoryCarrier)) explorerMinions.erase(mandatoryCarrier);
-            if (explorerMinions.count(flagDefender)) explorerMinions.erase(flagDefender);
         }
         ign();
     }
@@ -351,7 +322,7 @@ struct Game {
             cin >> id;
             ign();
             isAlive[id] = true;
-            myMinions[id].readMinion(true);
+            myMinions[id].readMinion();
         }
 
         if (n_minions == -1) {
@@ -466,7 +437,7 @@ struct Game {
             cin >> id;
             ign();
             isOppVisible[id] = true;
-            oppMinions[id].readMinion(false);
+            oppMinions[id].readMinion();
         }
     }
 
@@ -617,11 +588,11 @@ struct Game {
             // distFromOppBase[xx][yy]
             //      << endl;
 
-            // cerr << "Visible opponent minions: ";
-            // for (int i = 0; i < visibleOnes.size(); i++) {
-            //     cerr << visibleOnes[i] << " ";
-            // }
-            // cerr << endl;
+            cerr << "Visible opponent minions: ";
+            for (int i = 0; i < visibleOnes.size(); i++) {
+                cerr << visibleOnes[i] << " ";
+            }
+            cerr << endl;
 
             cerr << "{" << a1.first << ", " << a1.second << "}, {" << d1.first << ", " << d1.second
                  << "}, {" << f1.first << ", " << f1.second << "}" << endl;
@@ -636,75 +607,40 @@ struct Game {
                 if (oppFlagCarrier == -1)
                     movX = oppFlagX, movY = oppFlagY;
                 else
-                    //অন্য কোনো path choose করলে ওটাতেই যাও
-                    movX = destForMandatoryCarrier.first, movY = destForMandatoryCarrier.second;
+                    movX = myFlagBaseX, movY = myFlagBaseY;
             }
             else if (i == flagDefender)
                 movX = myFlagX, movY = myFlagY;
 
             if (a2.second > 0 && !firstTime) {
-                int distCur = distFromMyBase[xx][yy];
-                int differenceOfShortestPaths = 0;
+                int distNow = distFromMyBase[xx][yy];
                 int score = INF;
                 for (int dir = 0; dir < 4; dir++) {
                     int newX = dx[dir] + xx;
                     int newY = dy[dir] + yy;
                     if (!isValid(newX, newY)) continue;
-                    if (askSameLine(newX, newY, last.myMinions[i].posX, last.myMinions[i].posY,
-                                    false, -1, last))
+                    if (askSameLine(newX, newY, last.myMinions[i].posX, myMinions[i].posY, false,
+                                    -1, last))
                         continue;
-                    if (i == oppFlagCarrier && distFromMyBase[newX][newY] >= distCur - 1 + 5)
+                    if (i == oppFlagCarrier && distFromMyBase[newX][newY] >= distNow - 1 + 10)
                         continue;
                     else if (distFromMyBase[newX][newY] < score) {
                         score = distFromMyBase[newX][newY];
-                        //আগে লাগতো distFromMyBase[xx][yy] distance
-                        //এখন লাগবে distFromMyBase[newX][newY] + 1 distance
-                        differenceOfShortestPaths =
-                            distFromMyBase[newX][newY] + 1 - distFromMyBase[xx][yy];
                         movX = newX;
                         movY = newY;
-                    }
-                }
-
-                if (i == oppFlagCarrier && score != INF) {
-                    //অন্য কোনো path choose করসো
-                    auto getAllXDistancedPoints =
-                        giveCellsOfADistance({xx, yy}, differenceOfShortestPaths);
-                    // so I have to go differenceOfShortestPaths amount of distance to some cell
-                    // which is at distance dist[xx][yy] + difference from the base
-                    if (!getAllXDistancedPoints.empty()) {
-                        // first find the actual shortest path point
-                        pair<int, int> actualPoint = {-1, -1};
-                        for (int k = 0; k < getAllXDistancedPoints.size(); k++) {
-                            // now check if this point is on the actual shortest path
-                            int thisX = getAllXDistancedPoints[k].first;
-                            int thisY = getAllXDistancedPoints[k].second;
-                            if (distFromMyBase[thisX][thisY] + differenceOfShortestPaths ==
-                                distFromMyBase[xx][yy]) {
-                                actualPoint = getAllXDistancedPoints[k];
-                                break;
-                            }
-                        }
-                        if (getAllXDistancedPoints.size() > 1) {
-                            // I wanna go to a point where distance from my base is
-                            // distFromMyBase[xx][yy] - 1 + differenceOfPaths
-                            for (int k = 0; k < getAllXDistancedPoints.size(); k++) {
-                                // now check if this point is on the actual shortest path
-                                if (getAllXDistancedPoints[k] == actualPoint) continue;
-                                int thisX = getAllXDistancedPoints[k].first;
-                                int thisY = getAllXDistancedPoints[k].second;
-                                if (distFromMyBase[thisX][thisY] ==
-                                    differenceOfShortestPaths + distFromMyBase[xx][yy]) {
-                                    destForMandatoryCarrier = getAllXDistancedPoints[k];
-                                    break;
-                                }
-                            }
-                        }
                     }
                 }
             }
 
             if (i == mandatoryCarrier) {
+                if (oppFlagCarrier == mandatoryCarrier ||
+                    askSameLine(xx, yy, oppFlagX, oppFlagY, false, -1, last)) {
+                    if (a2.second > f2.second && myScore >= powerups[1].price)
+                        takeOperation(FREEZE, i, moveDone);
+                    else
+                        takeOperation(MOVE, i, moveDone, movX, movY);
+                }
+
                 if (!firstTime && myScore >= powerups[0].price && !visibleOnes.empty() &&
                     last.oppMinions[visibleOnes.front()].timeout == 1 &&
                     a1.first == 0) {  //এতোক্ষণ frozen ছিল
@@ -875,8 +811,7 @@ struct Game {
                     if (a1.second > 0 && myScore >= needed_fire_spell * powerups[0].price) {
                         takeOperation(FIRE, i, moveDone);
                     }
-                    else if (myScore >= powerups[1].price && a1.second > 0 && myFlagCarrier != -1 &&
-                             !visibleOnes.empty() && oppMinions[visibleOnes.front()].timeout == 0)
+                    else if (myScore >= powerups[1].price && a1.second > 0)
                         takeOperation(FREEZE, i, moveDone);
                     if (a1.first == 0 &&
                         askSameLine(xx, yy, myFlagX, myFlagY, true, myFlagCarrier, last) &&
@@ -904,7 +839,7 @@ struct Game {
                 // retaliation is costly, no need to adopt it if you can evade
                 if (!firstTime && myMinions[i].health < last.myMinions[i].health && d1.first == 0 &&
                     a1.second > 0 && !visibleOnes.empty()) {  // retaliate
-                    if (movX != -1 && myAliveMinionCnt >= 3)
+                    if (movX != -1 && myAliveMinionCnt >= 2)
                         takeOperation(MOVE, i, moveDone, movX, movY);
                     if (f1.second == 0 && myScore >= powerups[1].price &&
                         myMinions[i].health < oppMinions[visibleOnes.front()].health)
@@ -1008,7 +943,7 @@ int main()
     readBases();
     readPowerUps();
 
-    bfs({myFlagBaseX, myFlagBaseY}, distFromMyBase, true);
+    bfs({myFlagBaseX, myFlagBaseY}, distFromMyBase);
     bfs({oppFlagBaseX, oppFlagBaseY}, distFromOppBase);
 
     // explorer minions will just explore for more and more coins
