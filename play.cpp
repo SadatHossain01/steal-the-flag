@@ -49,7 +49,8 @@ inline void ign() { cin.ignore(); }
 struct Powerup {
     string name;
     int price, damage;
-    inline void readPowerUp() {
+    inline void readPowerUp()
+    {
         cin >> name >> price >> damage;
         ign();
     }
@@ -60,7 +61,8 @@ Powerup powerups[3];  // 0 fire, 1 freeze, 2 mine
 struct Coin {
     int posX, posY;
     bool taken;
-    inline void readCoin() {
+    inline void readCoin()
+    {
         cin >> posX >> posY;
         ign();
         taken = false;
@@ -73,7 +75,8 @@ struct Minion {
     // int id; this is basically the array index
     int posX, posY, health, timeout;
     // read the id first, and then call minion[id].readMinion()
-    inline void readMinion() {
+    inline void readMinion()
+    {
         cin >> posX >> posY >> health >> timeout;
         ign();
         pair<int, int> p = {posX, posY};
@@ -92,7 +95,8 @@ struct Operation {
     opTypes ty;
     int id, x, y;
     Operation(opTypes o, int id, int x = -1, int y = -1) : ty(o), id(id), x(x), y(y) {}
-    void print() {
+    void print()
+    {
         if (ty == MOVE)
             cout << "MOVE " << id << " " << x << " " << y;
         else if (ty == MINE)
@@ -106,7 +110,8 @@ struct Operation {
     }
 };
 
-void readGrid() {
+void readGrid()
+{
     cin >> height >> width;
     ign();
     grid.resize(height);
@@ -138,22 +143,26 @@ void readGrid() {
     }
 }
 
-void readBases() {
+void readBases()
+{
     cin >> myFlagBaseX >> myFlagBaseY;
     ign();
     cin >> oppFlagBaseX >> oppFlagBaseY;
     ign();
 }
 
-void readPowerUps() {
+void readPowerUps()
+{
     for (int i = 0; i < 3; i++) powerups[i].readPowerUp();
 }
 
-inline bool isValid(int x, int y) {
+inline bool isValid(int x, int y)
+{
     return x >= 0 && x < height && y >= 0 && y < width && grid[x][y] == '.';
 }
 
-inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int lastX, int lastY) {
+inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int lastX, int lastY)
+{
     // cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2
     //      << " " << lastX << " " << lastY << endl;
     //  x2 y2 is the target
@@ -179,7 +188,8 @@ inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int l
         now = prefixSumRow[x2][y2];
         if (y1 != 0) now -= prefixSumRow[x1][y1 - 1];
         if (now == 0) ret = true;
-    } else if (y1 == y2) {  // vertical matching
+    }
+    else if (y1 == y2) {  // vertical matching
         now = prefixSumCol[x2][y2];
         if (x1 != 0) now -= prefixSumCol[x1 - 1][y1];
         if (now == 0) ret = true;
@@ -188,7 +198,8 @@ inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int l
     return ret;
 }
 
-void bfs(pair<int, int> s, vector<vector<int>>& dist) {
+void bfs(pair<int, int> s, vector<vector<int>>& dist)
+{
     visited.assign(height, vector<bool>(width, false));
     dist.assign(height, vector<int>(width, INF));
     // parent.assign(height, vector<pair<int, int>>(width, {-1, -1}));
@@ -216,7 +227,8 @@ void bfs(pair<int, int> s, vector<vector<int>>& dist) {
     }
 }
 
-void dfs(int x, int y) {
+void dfs(int x, int y)
+{
     visited[x][y] = true;
     not_visited.push_back({x, y});
     vector<int> v{0, 1, 2, 3};
@@ -229,7 +241,8 @@ void dfs(int x, int y) {
     }
 }
 
-void init() {
+void init()
+{
     // explorer minions will just explore for more and more coins
     int startX, startY;
     //না, start কোনো এক কোণা থেকে শুরু করলে ভালো মনেহয়
@@ -266,17 +279,20 @@ struct Game {
 
     vector<Operation> operations;
 
-    Game() {
+    Game()
+    {
         myMinions.resize(5);
         oppMinions.resize(5);
     }
 
     // initial things
-    inline void readFlag(bool my) {
+    inline void readFlag(bool my)
+    {
         if (my) {
             cin >> myFlagX >> myFlagY;
             cin >> myFlagCarrier;
-        } else {
+        }
+        else {
             cin >> oppFlagX >> oppFlagY;
             cin >> oppFlagCarrier;
             if (oppFlagCarrier != -1 && oppFlagCarrier != mandatoryCarrier)
@@ -287,12 +303,14 @@ struct Game {
     }
 
     // game loop things
-    inline void readScores() {
+    inline void readScores()
+    {
         cin >> myScore >> oppScore;
         ign();
     }
 
-    void readMyMinions() {
+    void readMyMinions()
+    {
         isAlive.reset();
         cin >> myAliveMinionCnt;
         ign();
@@ -404,7 +422,8 @@ struct Game {
         }
     }
 
-    void readOppMinions() {
+    void readOppMinions()
+    {
         isOppVisible.reset();
         cin >> visibleMinionCnt;
         ign();
@@ -417,7 +436,8 @@ struct Game {
         }
     }
 
-    void readCoins() {
+    void readCoins()
+    {
         cin >> visibleCoinCnt;
         ign();
         visibleCoins.resize(visibleCoinCnt);
@@ -425,7 +445,8 @@ struct Game {
         // cerr << "Read Coins done" << endl;
     }
 
-    void takeOperation(opTypes t, int id, bool& marker, int x = -1, int y = -1) {
+    void takeOperation(opTypes t, int id, bool& marker, int x = -1, int y = -1)
+    {
         if (moveDone) return;
         int cost = 0;
         if (t == FIRE)
@@ -440,7 +461,8 @@ struct Game {
     }
 
     bool askSameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int targetID,
-                     const Game& last) {
+                     const Game& last)
+    {
         // cerr << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2 << " "
         //      << (wantAdjAnalysis ? "true" : "false") << " " << last.isOppVisible[targetID] <<
         //      endl;
@@ -456,8 +478,8 @@ struct Game {
     }
 
     void calculateVisibleMinions(int id, pair<int, int>& affected, pair<int, int>& death,
-                                 pair<int, int>& alreadyFrozen, const Game& last,
-                                 bool wantAnalysis) {
+                                 pair<int, int>& alreadyFrozen, const Game& last, bool wantAnalysis)
+    {
         // how many minions from both sides this minion of mine affects...
         affected = death = alreadyFrozen = {0, 0};
         int xx = myMinions[id].posX;
@@ -486,7 +508,8 @@ struct Game {
         }
     }
 
-    vector<int> getVisibleMinions(int id, const Game& last) {
+    vector<int> getVisibleMinions(int id, const Game& last)
+    {
         vector<int> v;
         int xx = myMinions[id].posX;
         int yy = myMinions[id].posY;
@@ -503,7 +526,8 @@ struct Game {
         return v;
     }
 
-    void printOperations() {
+    void printOperations()
+    {
         const int nn = operations.size();
         // cerr << "operations getting printed here" << endl;
         for (int i = 0; i < nn; i++) {
@@ -515,7 +539,8 @@ struct Game {
         }
     }
 
-    void doThings(const Game& last) {
+    void doThings(const Game& last)
+    {
         vector<int> v;
         // fixing the priorities
         v.push_back(mandatoryCarrier);
@@ -638,7 +663,8 @@ struct Game {
                     // insert new moves here if found
                     // if nothing has been done yet
                     takeOperation(MOVE, i, moveDone, movX, movY);
-                } else {
+                }
+                else {
                     // so not got the flag yet
                     if (f2.second > 0 && a1.first == 0 &&
                         myScore >=
@@ -806,7 +832,8 @@ struct Game {
                     //আগে দেখো visible coin আছে নাকি?
                     if (assignedCoins[i].posX != -1) {  //একটা coin assign করা আছে
                         dest = {assignedCoins[i].posX, assignedCoins[i].posY};
-                    } else if (visibleCoinCnt > 0) {
+                    }
+                    else if (visibleCoinCnt > 0) {
                         int closestDist = -1, closestOne = -1;
                         for (int k = 0; k < visibleCoinCnt; k++) {
                             if (visibleCoins[k].taken ||
@@ -847,7 +874,8 @@ struct Game {
                                 if (leftToVisit[p.first][p.second]) {
                                     dest = p;
                                     break;
-                                } else
+                                }
+                                else
                                     cellsToExplore[assigned_exploration_idx].pop_back();
                             }
                         }
@@ -880,7 +908,8 @@ struct Game {
 
 Game last;
 
-int main() {
+int main()
+{
     readGrid();
     readBases();
     readPowerUps();
