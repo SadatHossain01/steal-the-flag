@@ -1,0 +1,3 @@
+turn auto format on paste off
+turn auto format on type off
+in vscode settings
