@@ -868,7 +868,8 @@ struct Game {
                 }
             }
             if (!found && f2.second == a2.second && i != mandatoryCarrier) nullify = true;
-            if (i == mandatoryCarrier && oppFlagCarrier == -1 && myFlagCarrier != -1)
+            if (i == mandatoryCarrier && oppFlagCarrier == -1 && myFlagCarrier != -1 &&
+                distFromMyBase[myFlagX][myFlagY] >= 4)
                 nullify = true;
             if (i == mandatoryCarrier && myAliveMinionCnt <= 2) nullify = true;
             if (!nullify) {
@@ -953,9 +954,9 @@ struct Game {
                             encounter = true;
                     }
                     int max_forth;
-                    if (abs(last.oppScore - oppScore) >= 6 && oppScore >= powerups[0].price) {
+                    if (abs(last.oppScore - oppScore) >= 5 && oppScore >= powerups[0].price) {
                         max_forth = 2 * ((oppScore + powerups[0].price - 1) / powerups[0].price);
-                    } else if (abs(last.oppScore - oppScore) < 6) {
+                    } else if (abs(last.oppScore - oppScore) < 5) {
                         max_forth = 4;
                     }
                     if (!encounter) {
