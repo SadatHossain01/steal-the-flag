@@ -434,6 +434,7 @@ struct Game {
                 }
             }
             assignedExploration[flagDefender] = idx;
+            cerr << "Assigned " << idx << " to " << flagDefender << endl;
             flagDefender = -1;
         }
 
@@ -757,16 +758,16 @@ struct Game {
     void doThings(const Game& last, const Game& last2) {
         vector<int> v;
         // fixing the priorities
-        v.push_back(mandatoryCarrier);
-        if (flagDefender != mandatoryCarrier) v.push_back(flagDefender);
+        if (mandatoryCarrier != -1) v.push_back(mandatoryCarrier);
+        if (flagDefender != mandatoryCarrier && flagDefender != -1) v.push_back(flagDefender);
 
         for (int i = 0; i < n_minions; i++) {
             auto it = find(v.begin(), v.end(), i);
             if (it == v.end()) v.push_back(i);
         }
 
-        // for (int i = 0; i < v.size(); i++) cerr << v[i] << " ";
-        // cerr << endl;
+        for (int i = 0; i < v.size(); i++) cerr << v[i] << " ";
+        cerr << endl;
 
         for (int j = 0; j < n_minions; j++) {
             int i = v[j];
@@ -954,11 +955,14 @@ struct Game {
                             encounter = true;
                     }
                     int max_forth;
-                    if (abs(last.oppScore - oppScore) >= 5 && oppScore >= powerups[0].price) {
-                        max_forth = 2 * ((oppScore + powerups[0].price - 1) / powerups[0].price);
-                    } else if (abs(last.oppScore - oppScore) < 5) {
+                    if (last2.oppScore > oppScore && abs(last2.oppScore - oppScore) >= 4 &&
+                        oppScore >= powerups[0].price) {
+                        max_forth =
+                            2 * ((oppScore + powerups[0].price - 1) / powerups[0].price) + 1;
+                    } else if (abs(last2.oppScore - oppScore) < 4) {
                         max_forth = 4;
                     }
+                    cerr << max_forth << endl;
                     if (!encounter) {
                         // not encountering some flag defender
                         if (a2.second > 0 && oppScore >= powerups[0].price) {
@@ -972,10 +976,13 @@ struct Game {
                                            last.myMinions[i].timeout > 0) {
                                     if (myScore >= powerups[1].price && f2.second < a2.second)
                                         takeOperation(FREEZE, i, moveDone);
+                                    else if (myAliveMinionCnt <= 2 && myScore >= powerups[1].price)
+                                        takeOperation(FREEZE, i, moveDone);
                                 }
                                 takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             } else {
                                 //অনেক হইসে, এবার সামনে আগাও -_-
+                                cerr << "Whoa" << endl;
                                 takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             }
                         } else {
