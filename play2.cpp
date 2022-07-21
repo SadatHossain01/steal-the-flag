@@ -733,55 +733,106 @@ struct Game {
             // }
             // cerr << endl;
 
-            cerr << "{" << a1.first << ", " << a1.second << "}, {" << d1.first << ", " << d1.second
-                 << "}, {" << f1.first << ", " << f1.second << "}" << endl;
+            cerr << "1: {" << a1.first << ", " << a1.second << "}, {" << d1.first << ", "
+                 << d1.second << "}, {" << f1.first << ", " << f1.second << "}"
+                 << " 2: ";
             cerr << "{" << a2.first << ", " << a2.second << "}, {" << d2.first << ", " << d2.second
                  << "}, {" << f2.first << ", " << f2.second << "}" << endl;
+
+            // cerr << "Curve and distances from this position: " << endl;
+            // for (int j = 0; j < 5; j++) {
+            //     cerr << "{" << myShortestPath[xx][yy].top[j].dist << ", "
+            //          << myShortestPath[xx][yy].top[j].curve << "}";
+            //     if (j != 4) cerr << ", ";
+            //     else cerr << endl;
+            // }
+
             // cerr << maxOppHealth << " " << needed_fire_spell << endl;
             moveDone = false;
             auto& ref = myShortestPath[xx][yy].top;
+
+            int movX = -1, movY = -1;
+            if (i == mandatoryCarrier) {
+                if (oppFlagCarrier == -1) movX = oppFlagX, movY = oppFlagY;
+                else movX = ref[0].parent.first, movY = ref[0].parent.second;
+            } else if (i == flagDefender) {
+                if (myFlagCarrier != -1) movX = myFlagX, movY = myFlagY;
+                else {
+                    pair<int, int> p = giveBestCell(myFlagX, myFlagY);
+                    movX = p.first, movY = p.second;
+                }
+            }
+
+            if (a2.second > 0 && !firstTime &&
+                oppScore >= min(powerups[0].price, powerups[1].price)) {
+                int distNow = distFromMyBase[xx][yy];
+                int score = INF;
+                for (int dir = 0; dir < 4; dir++) {
+                    int newX = dx[dir] + xx;
+                    int newY = dy[dir] + yy;
+                    if (!isValid(newX, newY)) continue;
+                    if (askSameLine(newX, newY, last.myMinions[i].posX, myMinions[i].posY, false,
+                                    -1, last))
+                        continue;
+                    else if (distFromMyBase[newX][newY] < score) {
+                        score = distFromMyBase[newX][newY];
+                        movX = newX;
+                        movY = newY;
+                    }
+                }
+            }
 
             // moveDone check will be done inside the function
             if (i == mandatoryCarrier) {
                 if (i == oppFlagCarrier) {
                     // carrying the flag
-                    if (a2.second > 0) {
-                        //পালায় যাওয়ার জায়গা থাকলে freeze করার দরকার নাই তো
-                        int idx = 0;
-                        for (int j = 1; j < 5; j++) {
-                            if (ref[j].curve > ref[idx].curve &&
-                                ref[j].dist <= distFromMyBase[xx][yy] + 2 &&
-                                ref[idx].parent.first != -1) {
-                                idx = j;
-                            }
+                    if (a2.second - f2.second > 0 &&
+                        oppScore >= min(powerups[0].price, powerups[1].price)) {
+                        if (myScore >= powerups[1].price &&
+                            askSameLine(movX, movY, last.myMinions[i].posX, last.myMinions[i].posY,
+                                        false, -1, last)) {
+                            // freeze করার মতো টাকা আছে
+                            takeOperation(FREEZE, i, moveDone);
+                        } else {
+                            takeOperation(MOVE, i, moveDone, movX, movY);
                         }
-                        pair<int, int> want = ref[idx].parent;
-                        if (!firstTime &&
-                            askSameLine(last.myMinions[i].posX, last.myMinions[i].posY, want.first,
-                                        want.second, false, -1, last) &&
-                            f2.second < a2.second) {
-                            if (myScore >= powerups[1].price) takeOperation(FREEZE, i, moveDone);
-                        }
-                        takeOperation(MOVE, i, moveDone, want.first, want.second);
-                    } else
-                        takeOperation(MOVE, i, moveDone, ref[0].parent.first, ref[0].parent.second);
-                }
-
-                else {
-                    // not got the flag yet
-                    //আপাতত যাওয়ার সময় attacking হইতেসিনা, meaning no retaliation
-                    //না হইতেসি
-                    if (!askSameLine(xx, yy, oppFlagX, oppFlagY, false, -1, last)) {
-                        if (firstTime || (myMinions[i].health == last.myMinions[i].health))
-                            takeOperation(MOVE, i, moveDone, oppFlagX,
-                                          oppFlagY);  // get to the line
-                        else takeOperation(FREEZE, i, moveDone);
-
                     } else {
-                        if (!firstTime && f2.second < a2.second) {
-                            if (myScore >= powerups[1].price) takeOperation(FREEZE, i, moveDone);
+                        takeOperation(MOVE, i, moveDone, ref[0].parent.first, ref[0].parent.second);
+                    }
+                } else {
+                    // not got the flag yet
+                    if (askSameLine(xx, yy, oppFlagX, oppFlagY, false, -1, last)) {
+                        // same line as flag
+                        if (a2.second - f2.second > 0 &&
+                            oppScore >= min(powerups[0].price, powerups[1].price)) {
+                            if (myScore >= powerups[1].price &&
+                                askSameLine(movX, movY, last.myMinions[i].posX,
+                                            last.myMinions[i].posY, false, -1, last)) {
+                                // freeze করার মতো টাকা আছে
+                                takeOperation(FREEZE, i, moveDone);
+                            } else {
+                                takeOperation(MOVE, i, moveDone, movX, movY);
+                            }
+                        } else {
+                            // no attack impending
+                            takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                         }
-                        takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
+                    } else {
+                        // not in the same line
+                        if (a2.second - f2.second > 0 &&
+                            oppScore >= min(powerups[0].price, powerups[1].price)) {
+                            if (myScore >= powerups[1].price &&
+                                askSameLine(movX, movY, last.myMinions[i].posX,
+                                            last.myMinions[i].posY, false, -1, last)) {
+                                // freeze করার মতো টাকা আছে
+                                takeOperation(FREEZE, i, moveDone);
+                            } else {
+                                takeOperation(MOVE, i, moveDone, movX, movY);
+                            }
+                        } else {
+                            // no attack impending
+                            takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
+                        }
                     }
                 }
             }
@@ -799,7 +850,7 @@ struct Game {
                     // flag secure now
                     // attack if anyone is coming
                     if (a2.second > 0) {  // some people are in the same line as me and the flag
-                        if (myScore >= powerups[0].price && d2.first == 0)
+                        if (myScore >= powerups[0].price && a1.first == 0)
                             takeOperation(FIRE, i, moveDone);
                         else takeOperation(MOVE, i, moveDone, reachPoint.first, reachPoint.second);
                     } else {  // nobody coming, just chill
@@ -812,7 +863,8 @@ struct Game {
                     if (a1.second > 0 && askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last) &&
                         myScore >= min(powerups[0].price, powerups[1].price)) {
                         if (oppFlagCarrier == -1) {
-                            if (myScore >= powerups[0].price) takeOperation(FIRE, i, moveDone);
+                            if (myScore >= powerups[0].price && a2.first == 0)
+                                takeOperation(FIRE, i, moveDone);
                             else takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                         } else if (distFromMyBase[oppFlagX][oppFlagY] >=
                                        distFromOppBase[myFlagX][myFlagY] - 3 &&
@@ -820,14 +872,18 @@ struct Game {
                                        distFromMyBase[oppFlagBaseX][oppFlagBaseY] - 4) {
                             if (myScore >= powerups[1].price)
                                 takeOperation(FREEZE, i, moveDone, myFlagX, myFlagY);
-                            else takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
+                            else if (myScore >= powerups[0].price && a1.first == 0)
+                                takeOperation(FIRE, i, moveDone);
                         }
+                        takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                     } else takeOperation(MOVE, i, moveDone, myFlagX, myFlagY);
                 }
             }
 
             else {
                 // explorer minion
+                cerr << "Assigned Coin: " << assignedCoins[i].posX << " " << assignedCoins[i].posY
+                     << endl;
                 if (!moveDone) {
                     pair<int, int> dest = {-1, -1};
                     //আগে দেখো visible coin আছে নাকি?
@@ -848,7 +904,7 @@ struct Game {
                                     continue;
                             }
                             if (closestOne == -1 ||
-                                (abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy) >
+                                (abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy) <
                                  closestDist)) {
                                 closestOne = k;
                                 closestDist =
@@ -865,8 +921,8 @@ struct Game {
                     if (dest == make_pair(-1, -1)) {
                         int assigned_exploration_idx =
                             assignedExploration[i];  //একে কোন সেট explore করতে বলা হইসে
-                        // cerr << i << " " << cellsToExplore[assigned_exploration_idx].size() <<
-                        // endl;
+                        // cerr << i << " " << cellsToExplore[assigned_exploration_idx].size()
+                        // << endl;
                         if (!cellsToExplore[assigned_exploration_idx].empty()) {
                             assert(!cellsToExplore[assigned_exploration_idx].empty());
                             while (!cellsToExplore[assigned_exploration_idx].empty()) {
