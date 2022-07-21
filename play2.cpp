@@ -23,6 +23,7 @@ bool moveDone;          // make sure no minion move is wasted?
 bool firstTime = true;  // for last state of the game
 vector<string> grid;
 vector<pair<int, int>> not_visited;
+set<int> blocked;
 set<int> explorerMinions;
 int myFlagBaseX, myFlagBaseY, oppFlagBaseX, oppFlagBaseY;
 // this is for different calls of bfs()
@@ -113,7 +114,7 @@ struct Minion {
         cin >> posX >> posY >> health >> timeout;
         ign();
         pair<int, int> p = {posX, posY};
-        for (int i = 0; i < n_minions - 2; i++) leftToVisit[posX][posY] = false;
+        leftToVisit[posX][posY] = false;
         for (int i = 0; i < n_minions; i++) {
             if (posX == assignedCoins[i].posX &&
                 posY == assignedCoins[i].posY) {  //নেয়া হয়ে গেসে coin টা
@@ -415,8 +416,8 @@ struct Game {
             myMinions[id].readMinion();
             int xx = myMinions[id].posX;
             int yy = myMinions[id].posY;
-            if (xx == firstAssignment[i].first && yy == firstAssignment[i].second)
-                reachedFirstCell[i] = true;
+            if (xx == firstAssignment[id].first && yy == firstAssignment[id].second)
+                reachedFirstCell[id] = true;
             if (!firstTime && xx == last2.myMinions[id].posX && yy == last2.myMinions[id].posY) {
                 if (backandforthcounter[id] == 0) backandforthcounter[id] = 2;
                 else backandforthcounter[id]++;
@@ -531,6 +532,11 @@ struct Game {
             int id = 0;
             assignedExploration[mandatoryCarrier] = n_minions - 2;
             assignedExploration[flagDefender] = 0;
+            for (int j = 0; j < n_minions; j++) {
+                if (distFromMyBase[myMinions[j].posX][myMinions[j].posY] >= 1000) {
+                    blocked.insert(j);
+                }
+            }
             int per = height / (n_minions - 2);
             for (int i = 0; i < n_minions; i++) {
                 if (i == mandatoryCarrier || i == flagDefender) {
@@ -545,7 +551,9 @@ struct Game {
                 for (auto they : cellsToExplore[id]) {
                     if (firstAssignment[i].first == -1) firstAssignment[i] = they;
                     else if (distOptional[they.first][they.second] <
-                             distOptional[firstAssignment[i].first][firstAssignment[i].second]) {
+                                 distOptional[firstAssignment[i].first]
+                                             [firstAssignment[i].second] &&
+                             (they.second * 3 >= width) && (they.second * 3 <= 2 * width)) {
                         firstAssignment[i] = they;
                     }
                 }
@@ -763,6 +771,9 @@ struct Game {
         for (int j = 0; j < n_minions; j++) {
             int i = v[j];
             if (!isAlive[i]) continue;  // dead already
+            if (blocked.count(i)) {
+                takeOperation(WAIT, i, moveDone);
+            }
 
             int xx = myMinions[i].posX;
             int yy = myMinions[i].posY;
@@ -832,7 +843,7 @@ struct Game {
             // cerr << "Prev: " << movX << " " << movY << " After: ";
 
             bool nullify = false;
-            if (!firstTime && i != flagDefender) {
+            if (!firstTime && i != mandatoryCarrier) {
                 for (int j = 0; j < n_minions; j++) {
                     if (!last2.isOppVisible[j] || !isOppVisible[j]) continue;
                     if (!askSameLine(xx, yy, oppMinions[j].posX, oppMinions[j].posY, false, -1,
@@ -856,8 +867,10 @@ struct Game {
                     break;
                 }
             }
-            if (!found && f2.second == a2.second && i != flagDefender) nullify = true;
-
+            if (!found && f2.second == a2.second && i != mandatoryCarrier) nullify = true;
+            if (i == mandatoryCarrier && oppFlagCarrier == -1 && myFlagCarrier != -1)
+                nullify = true;
+            if (i == mandatoryCarrier && myAliveMinionCnt <= 2) nullify = true;
             if (!nullify) {
                 int distNow = distFromMyBase[xx][yy];
                 int score = INF;
@@ -919,8 +932,12 @@ struct Game {
                     }
 
                     else {
+                        if (a2.second - f2.second > 0 && myScore >= powerups[1].price)
+                            takeOperation(FREEZE, i, moveDone);
                         // opponent does not have the ability to attack
-                        takeOperation(MOVE, i, moveDone, ref[0].parent.first, ref[0].parent.second);
+                        else
+                            takeOperation(MOVE, i, moveDone, ref[0].parent.first,
+                                          ref[0].parent.second);
                         //এই freeze টা জমায় রেখে পরে করলেও তো চলে
                     }
                 } else {
@@ -935,11 +952,17 @@ struct Game {
                                         last))
                             encounter = true;
                     }
+                    int max_forth;
+                    if (abs(last.oppScore - oppScore) >= 6 && oppScore >= powerups[0].price) {
+                        max_forth = 2 * ((oppScore + powerups[0].price - 1) / powerups[0].price);
+                    } else if (abs(last.oppScore - oppScore) < 6) {
+                        max_forth = 4;
+                    }
                     if (!encounter) {
                         // not encountering some flag defender
                         if (a2.second > 0 && oppScore >= powerups[0].price) {
                             // may attack me
-                            if (backandforthcounter[i] <= 4) {
+                            if (backandforthcounter[i] <= max_forth) {
                                 if (myScore < powerups[1].price) {  //টাকা নাই
                                     takeOperation(MOVE, i, moveDone, movX, movY);
                                 } else if (movX != oppFlagX || movY != oppFlagY) {
@@ -973,7 +996,7 @@ struct Game {
 
                         if (a2.second > 0 && oppScore >= powerups[0].price) {
                             // may attack me
-                            if (backandforthcounter[i] <= 5) {
+                            if (backandforthcounter[i] <= max_forth) {
                                 if (myScore < powerups[1].price) {  //টাকা নাই
                                     takeOperation(MOVE, i, moveDone, movX, movY);
                                 } else if (movX != oppFlagX || movY != oppFlagY) {
@@ -1041,100 +1064,112 @@ struct Game {
                 // cerr << "Assigned Coin: " << assignedCoins[i].posX << " " <<
                 // assignedCoins[i].posY
                 //      << endl;
-                if (!moveDone) {
-                    int assigned_exploration_idx =
-                        assignedExploration[i];  //একে কোন সেট explore করতে বলা হইসে
-                    if (!reachedFirstCell[i]) {
-                        // this is done to ensure that the minions are spread out
-                        // cerr << "Or what" << endl;
-                        takeOperation(MOVE, i, moveDone, firstAssignment[i].first,
-                                      firstAssignment[i].second);
+                if (a1.second > 0 && myFlagCarrier != -1 &&
+                    askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last)) {
+                    if (myScore >= powerups[0].price && a1.first == 0)
+                        takeOperation(FIRE, i, moveDone);
+                }
+                if (myFlagCarrier != -1 && flagDefender != -1 &&
+                    askSameLine(xx, yy, myMinions[flagDefender].posX, myMinions[flagDefender].posY,
+                                false, -1, last)) {
+                    if (movX != -1) takeOperation(MOVE, i, moveDone, movX, movY);
+                }
+            }
+            if (!firstTime && movX != -1) {
+                if (last.myMinions[i].health > myMinions[i].health || last.myMinions[i].timeout > 0)
+                    takeOperation(MOVE, i, moveDone, movX, movY);
+            }
+            if (!moveDone) {
+                int assigned_exploration_idx =
+                    assignedExploration[i];  //একে কোন সেট explore করতে বলা হইসে
+                if (!reachedFirstCell[i]) {
+                    // this is done to ensure that the minions are spread out
+                    // cerr << "Not reached" << endl;
+                    takeOperation(MOVE, i, moveDone, firstAssignment[i].first,
+                                  firstAssignment[i].second);
+                }
+                pair<int, int> dest = {-1, -1};
+                //আগে দেখো visible coin আছে নাকি?
+                if (assignedCoins[i].posX != -1) {  //একটা coin assign করা আছে
+                    // cerr << "This?" << endl;
+                    dest = {assignedCoins[i].posX, assignedCoins[i].posY};
+                }
+                if (visibleCoinCnt > 0) {
+                    // cerr << "Doing" << endl;
+                    int closestDist = INF, closestOne = -1;
+                    if (dest.first != -1) {
+                        closestDist = abs(dest.first - xx) + abs(dest.second - yy);
                     }
-                    pair<int, int> dest = {-1, -1};
-                    //আগে দেখো visible coin আছে নাকি?
-                    if (assignedCoins[i].posX != -1) {  //একটা coin assign করা আছে
-                        // cerr << "This?" << endl;
-                        dest = {assignedCoins[i].posX, assignedCoins[i].posY};
+                    for (int k = 0; k < visibleCoinCnt; k++) {
+                        if (visibleCoins[k].taken ||
+                            !askSameLine(xx, yy, visibleCoins[k].posX, visibleCoins[k].posY, false,
+                                         -1, last))
+                            continue;
+                        // cerr << "Hey" << endl;
+                        // for (int l = 0; l < n_minions; l++) {
+                        //     if (assignedCoins[l].posX == -1) continue;
+                        //     if (askSameLine(assignedCoins[l].posX, assignedCoins[l].posY,
+                        //                     visibleCoins[k].posX, visibleCoins[k].posY,
+                        //                     false, -1, last))
+                        //         continue;
+                        // }
+                        if (abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy) <
+                            closestDist) {
+                            closestOne = k;
+                            closestDist =
+                                abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy);
+                        }
                     }
-                    if (visibleCoinCnt > 0) {
-                        // cerr << "Doing" << endl;
-                        int closestDist = INF, closestOne = -1;
-                        if (dest.first != -1) {
-                            closestDist = abs(dest.first - xx) + abs(dest.second - yy);
-                        }
-                        for (int k = 0; k < visibleCoinCnt; k++) {
-                            if (visibleCoins[k].taken ||
-                                !askSameLine(xx, yy, visibleCoins[k].posX, visibleCoins[k].posY,
-                                             false, -1, last))
-                                continue;
-                            cerr << "Hey" << endl;
-                            // for (int l = 0; l < n_minions; l++) {
-                            //     if (assignedCoins[l].posX == -1) continue;
-                            //     if (askSameLine(assignedCoins[l].posX, assignedCoins[l].posY,
-                            //                     visibleCoins[k].posX, visibleCoins[k].posY,
-                            //                     false, -1, last))
-                            //         continue;
-                            // }
-                            if (abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy) <
-                                closestDist) {
-                                closestOne = k;
-                                closestDist =
-                                    abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy);
-                            }
-                        }
-                        if (closestOne != -1) {
-                            if (dest.first != -1 &&
-                                (visibleCoins[closestOne].posX != dest.first ||
-                                 visibleCoins[closestOne].posY != dest.second)) {
-                                for (int j = 0; j < visibleCoinCnt; j++) {
-                                    if (visibleCoins[j].posX == dest.first &&
-                                        visibleCoins[j].posY == dest.second) {
-                                        visibleCoins[j].taken = false;
-                                        break;
-                                    }
+                    if (closestOne != -1) {
+                        if (dest.first != -1 && (visibleCoins[closestOne].posX != dest.first ||
+                                                 visibleCoins[closestOne].posY != dest.second)) {
+                            for (int j = 0; j < visibleCoinCnt; j++) {
+                                if (visibleCoins[j].posX == dest.first &&
+                                    visibleCoins[j].posY == dest.second) {
+                                    visibleCoins[j].taken = false;
+                                    break;
                                 }
                             }
-                            dest = {visibleCoins[closestOne].posX, visibleCoins[closestOne].posY};
-                            visibleCoins[closestOne].taken = true;
-                            assignedCoins[i].posX = dest.first;
-                            assignedCoins[i].posY = dest.second;
                         }
-                        cerr << "Destination: " << dest.first << " " << dest.second << endl;
+                        dest = {visibleCoins[closestOne].posX, visibleCoins[closestOne].posY};
+                        visibleCoins[closestOne].taken = true;
+                        assignedCoins[i].posX = dest.first;
+                        assignedCoins[i].posY = dest.second;
                     }
-                    if (dest.first == -1) {
-                        // cerr << i << " " <<
-                        // cellsToExplore[assigned_exploration_idx].size()
-                        // << endl;
-                        if (!cellsToExplore[assigned_exploration_idx].empty()) {
-                            assert(!cellsToExplore[assigned_exploration_idx].empty());
-                            while (!cellsToExplore[assigned_exploration_idx].empty()) {
-                                pair<int, int> p = cellsToExplore[assigned_exploration_idx].back();
-                                if (leftToVisit[p.first][p.second]) {
-                                    dest = p;
-                                    break;
-                                } else cellsToExplore[assigned_exploration_idx].pop_back();
-                            }
-                        }
-                        if (cellsToExplore[assigned_exploration_idx].empty() &&
-                            dest == make_pair(-1, -1)) {
-                            int cnt = 0;
-                            while (true) {
-                                cnt++;
-                                if (cnt == n_minions) break;
-                                assigned_exploration_idx++;
-                                if (assigned_exploration_idx == n_minions)
-                                    assigned_exploration_idx = 0;
-                                if (!cellsToExplore[assigned_exploration_idx].empty()) break;
-                            }
-                            if (cnt == n_minions) {  //সব empty হয়ে গেসে
-                                cerr << "very less probability of this happening though" << endl;
-                                if (myFlagCarrier != -1) dest = {myFlagX, myFlagY};
-                                else dest = {myFlagBaseX, myFlagBaseY};
-                            }
-                        }
-                    }
-                    takeOperation(MOVE, i, moveDone, dest.first, dest.second);
+                    cerr << "Destination: " << dest.first << " " << dest.second << endl;
                 }
+                if (dest.first == -1) {
+                    // cerr << i << " " <<
+                    // cellsToExplore[assigned_exploration_idx].size()
+                    // << endl;
+                    if (!cellsToExplore[assigned_exploration_idx].empty()) {
+                        assert(!cellsToExplore[assigned_exploration_idx].empty());
+                        while (!cellsToExplore[assigned_exploration_idx].empty()) {
+                            pair<int, int> p = cellsToExplore[assigned_exploration_idx].back();
+                            if (leftToVisit[p.first][p.second]) {
+                                dest = p;
+                                break;
+                            } else cellsToExplore[assigned_exploration_idx].pop_back();
+                        }
+                    }
+                    if (cellsToExplore[assigned_exploration_idx].empty() &&
+                        dest == make_pair(-1, -1)) {
+                        int cnt = 0;
+                        while (true) {
+                            cnt++;
+                            if (cnt == n_minions) break;
+                            assigned_exploration_idx++;
+                            if (assigned_exploration_idx == n_minions) assigned_exploration_idx = 0;
+                            if (!cellsToExplore[assigned_exploration_idx].empty()) break;
+                        }
+                        if (cnt == n_minions) {  //সব empty হয়ে গেসে
+                            cerr << "very less probability of this happening though" << endl;
+                            if (myFlagCarrier != -1) dest = {myFlagX, myFlagY};
+                            else dest = {myFlagBaseX, myFlagBaseY};
+                        }
+                    }
+                }
+                takeOperation(MOVE, i, moveDone, dest.first, dest.second);
             }
         }
     }
