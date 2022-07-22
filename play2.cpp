@@ -424,7 +424,7 @@ struct Game {
             } else backandforthcounter[id] = 0;
         }
 
-        if (last.myAliveMinionCnt - 1 == myAliveMinionCnt && myAliveMinionCnt <= 2) {
+        if ((last.myAliveMinionCnt - 1 == myAliveMinionCnt) && myAliveMinionCnt <= 2) {
             explorerMinions.insert(flagDefender);
             int sz = 0, idx = -1;
             for (int j = 0; j < n_minions - 2; j++) {
@@ -495,16 +495,37 @@ struct Game {
                 int xx = myMinions[i].posX;
                 int yy = myMinions[i].posY;
                 if (distOptional[xx][yy] >= 1000) continue;
-                if (myAliveMinionCnt >= 2 && i == flagDefender) continue;
+                // if (myAliveMinionCnt >= 2 && i == flagDefender) continue;
                 if (least_distance == -1 || distOptional[xx][yy] < least_distance) {
                     mandatoryCarrier = i;
                     least_distance = distOptional[xx][yy];
                 }
             }
-            explorerMinions.erase(mandatoryCarrier);
+            if (flagDefender == mandatoryCarrier) {
+                // need to set a new flag defender
+                flagDefender = -1;
+                if (myAliveMinionCnt > 2 || (myAliveMinionCnt == 2 && n_minions > 3)) {
+                    distOptional = distFromMyBase;
+                    if (myFlagBaseX != myFlagX || myFlagBaseY != myFlagY)
+                        bfs({myFlagX, myFlagY}, distOptional);
+                    int least_distance = -1;
+                    for (int i = 0; i < n_minions; i++) {
+                        if (!isAlive[i] || blocked.count(i)) continue;
+                        int xx = myMinions[i].posX;
+                        int yy = myMinions[i].posY;
+                        if (i == mandatoryCarrier) continue;
+                        if (distOptional[xx][yy] >= 1000) continue;
+                        if (least_distance == -1 || distOptional[xx][yy] < least_distance) {
+                            flagDefender = i;
+                            least_distance = distOptional[xx][yy];
+                        }
+                    }
+                }
+            }
+            if (explorerMinions.count(mandatoryCarrier)) explorerMinions.erase(mandatoryCarrier);
         }
 
-        if (flagDefender != -1 && (!isAlive[flagDefender] && myAliveMinionCnt >= 2)) {
+        if ((flagDefender != -1 && (!isAlive[flagDefender] && myAliveMinionCnt >= 2))) {
             // if there are >= 2 minions, then one can be flag defender,
             // right? choose the minion that is the closest to my flag
             distOptional = distFromMyBase;
@@ -522,7 +543,7 @@ struct Game {
                     least_distance = distOptional[xx][yy];
                 }
             }
-            explorerMinions.erase(mandatoryCarrier);
+            // explorerMinions.erase(mandatoryCarrier);
         }
         if (explorerMinions.count(mandatoryCarrier)) explorerMinions.erase(mandatoryCarrier);
         if (explorerMinions.count(flagDefender)) explorerMinions.erase(flagDefender);
@@ -868,7 +889,10 @@ struct Game {
                     break;
                 }
             }
-            if (!found && f2.second == a2.second && i != mandatoryCarrier) nullify = true;
+            if (!found && f2.second == a2.second) nullify = true;
+            if (i == mandatoryCarrier && backandforthcounter[i] >= 2 &&
+                oppScore >= last2.oppScore - 1)
+                nullify = true;
             if (i == mandatoryCarrier && oppFlagCarrier == -1 && myFlagCarrier != -1 &&
                 distFromMyBase[myFlagX][myFlagY] >= 4)
                 nullify = true;
@@ -1014,9 +1038,13 @@ struct Game {
                                     if (myScore >= powerups[1].price && f2.second < a2.second)
                                         takeOperation(FREEZE, i, moveDone);
                                 }
-                                takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
+                                takeOperation(MOVE, i, moveDone, movX, movY);
                             } else {
                                 //অনেক হইসে, এবার সামনে আগাও -_-
+                                if (a2.second - f2.second > 0 || found) {
+                                    if (myScore >= powerups[1].price)
+                                        takeOperation(FREEZE, i, moveDone);
+                                }
                                 takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             }
                         } else {
