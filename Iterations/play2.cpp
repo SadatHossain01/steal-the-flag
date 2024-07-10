@@ -1,3 +1,5 @@
+// Scored 31.51 in the first run, some decent coin exploration finally
+
 #pragma GCC optimize("O3,inline")
 #pragma GCC target("bmi,bmi2,lzcnt,popcnt")
 
@@ -23,7 +25,6 @@ bool moveDone;          // make sure no minion move is wasted?
 bool firstTime = true;  // for last state of the game
 vector<string> grid;
 vector<pair<int, int>> not_visited;
-set<int> blocked;
 set<int> explorerMinions;
 int myFlagBaseX, myFlagBaseY, oppFlagBaseX, oppFlagBaseY;
 // this is for different calls of bfs()
@@ -114,10 +115,10 @@ struct Minion {
         cin >> posX >> posY >> health >> timeout;
         ign();
         pair<int, int> p = {posX, posY};
-        leftToVisit[posX][posY] = false;
+        for (int i = 0; i < n_minions - 2; i++) leftToVisit[posX][posY] = false;
         for (int i = 0; i < n_minions; i++) {
             if (posX == assignedCoins[i].posX &&
-                posY == assignedCoins[i].posY) {  //নেয়া হয়ে গেসে coin টা
+                posY == assignedCoins[i].posY) {  // নেয়া হয়ে গেসে coin টা
                 assignedCoins[i].posX = -1;
                 assignedCoins[i].posY = -1;
             }
@@ -208,15 +209,15 @@ inline bool sameLine(int x1, int y1, int x2, int y2, bool wantAdjAnalysis, int l
         // lastX = -1 হলে last এর data নাই
         // so do the direct comparison
         // so dealing with an opponent
-        //আমি তাকে যে লাইন ধরে attack করবো, তার যদি ওই লাইন ছেড়ে যাওয়ার ability
-        //থাকে, তাহলে ওই attack করে লাভ নাই
+        // আমি তাকে যে লাইন ধরে attack করবো, তার যদি ওই লাইন ছেড়ে যাওয়ার ability
+        // থাকে, তাহলে ওই attack করে লাভ নাই
         if (x1 == x2)
             if (isValid(x2 + 1, y2) || isValid(x2 - 1, y2)) return ret;
         if (y1 == y2)
             if (isValid(x2, y2 + 1) || isValid(x2, y2 - 1)) return ret;
     }
     if (x1 == x2) {  // horizontal matching
-        //উল্টা হলে negative আসবে, সমস্যা কী?
+        // উল্টা হলে negative আসবে, সমস্যা কী?
         now = prefixSumRow[x2][y2];
         if (y1 != 0) now -= prefixSumRow[x1][y1 - 1];
         if (now == 0) ret = true;
@@ -333,7 +334,7 @@ void dfs(int x, int y) {
 void init() {
     // explorer minions will just explore for more and more coins
     int startX, startY;
-    //না, start কোনো এক কোণা থেকে শুরু করলে ভালো মনেহয়
+    // না, start কোনো এক কোণা থেকে শুরু করলে ভালো মনেহয়
     for (int i = 0; i < height; i++) {
         for (int j = width - 1; j >= 0; j--) {
             if (!visited[i][j]) continue;
@@ -345,10 +346,10 @@ void init() {
     visited.assign(height, vector<bool>(width, false));
     cerr << "DFS Start: " << startX << " " << startY << endl;
     dfs(startX, startY);
-    leftToVisit.assign(height, vector<bool>(width, true));  //শুরুতে সবাই left to visit
+    leftToVisit.assign(height, vector<bool>(width, true));  // শুরুতে সবাই left to visit
     // cerr << "dfs done" << endl;
 
-    //নিজেদের shortest path বানাই চল, যেখানে সবচেয়ে বেশি curved path কে prefer করবো
+    // নিজেদের shortest path বানাই চল, যেখানে সবচেয়ে বেশি curved path কে prefer করবো
     special_bfs({myFlagBaseX, myFlagBaseY});
 }
 
@@ -387,7 +388,7 @@ struct Game {
                 int prev = mandatoryCarrier;
                 if (oppFlagCarrier == flagDefender) flagDefender = mandatoryCarrier;
                 mandatoryCarrier = oppFlagCarrier;
-                //না চাইতেই নিয়ে যখন নিসে, ওকেই দায়িত্ব দাও
+                // না চাইতেই নিয়ে যখন নিসে, ওকেই দায়িত্ব দাও
                 if (explorerMinions.count(mandatoryCarrier)) {
                     explorerMinions.erase(mandatoryCarrier);
                     explorerMinions.insert(prev);
@@ -416,15 +417,15 @@ struct Game {
             myMinions[id].readMinion();
             int xx = myMinions[id].posX;
             int yy = myMinions[id].posY;
-            if (xx == firstAssignment[id].first && yy == firstAssignment[id].second)
-                reachedFirstCell[id] = true;
+            if (xx == firstAssignment[i].first && yy == firstAssignment[i].second)
+                reachedFirstCell[i] = true;
             if (!firstTime && xx == last2.myMinions[id].posX && yy == last2.myMinions[id].posY) {
                 if (backandforthcounter[id] == 0) backandforthcounter[id] = 2;
                 else backandforthcounter[id]++;
             } else backandforthcounter[id] = 0;
         }
 
-        if ((last.myAliveMinionCnt - 1 == myAliveMinionCnt) && myAliveMinionCnt <= 2) {
+        if (last.myAliveMinionCnt - 1 == myAliveMinionCnt && myAliveMinionCnt <= 2) {
             explorerMinions.insert(flagDefender);
             int sz = 0, idx = -1;
             for (int j = 0; j < n_minions - 2; j++) {
@@ -434,7 +435,6 @@ struct Game {
                 }
             }
             assignedExploration[flagDefender] = idx;
-            cerr << "Assigned " << idx << " to " << flagDefender << endl;
             flagDefender = -1;
         }
 
@@ -495,37 +495,16 @@ struct Game {
                 int xx = myMinions[i].posX;
                 int yy = myMinions[i].posY;
                 if (distOptional[xx][yy] >= 1000) continue;
-                // if (myAliveMinionCnt >= 2 && i == flagDefender) continue;
+                if (myAliveMinionCnt >= 2 && i == flagDefender) continue;
                 if (least_distance == -1 || distOptional[xx][yy] < least_distance) {
                     mandatoryCarrier = i;
                     least_distance = distOptional[xx][yy];
                 }
             }
-            if (flagDefender == mandatoryCarrier) {
-                // need to set a new flag defender
-                flagDefender = -1;
-                if (myAliveMinionCnt > 2 || (myAliveMinionCnt == 2 && n_minions > 3)) {
-                    distOptional = distFromMyBase;
-                    if (myFlagBaseX != myFlagX || myFlagBaseY != myFlagY)
-                        bfs({myFlagX, myFlagY}, distOptional);
-                    int least_distance = -1;
-                    for (int i = 0; i < n_minions; i++) {
-                        if (!isAlive[i] || blocked.count(i)) continue;
-                        int xx = myMinions[i].posX;
-                        int yy = myMinions[i].posY;
-                        if (i == mandatoryCarrier) continue;
-                        if (distOptional[xx][yy] >= 1000) continue;
-                        if (least_distance == -1 || distOptional[xx][yy] < least_distance) {
-                            flagDefender = i;
-                            least_distance = distOptional[xx][yy];
-                        }
-                    }
-                }
-            }
-            if (explorerMinions.count(mandatoryCarrier)) explorerMinions.erase(mandatoryCarrier);
+            explorerMinions.erase(mandatoryCarrier);
         }
 
-        if ((flagDefender != -1 && (!isAlive[flagDefender] && myAliveMinionCnt >= 2))) {
+        if (flagDefender != -1 && (!isAlive[flagDefender] && myAliveMinionCnt >= 2)) {
             // if there are >= 2 minions, then one can be flag defender,
             // right? choose the minion that is the closest to my flag
             distOptional = distFromMyBase;
@@ -543,26 +522,21 @@ struct Game {
                     least_distance = distOptional[xx][yy];
                 }
             }
-            // explorerMinions.erase(mandatoryCarrier);
+            explorerMinions.erase(mandatoryCarrier);
         }
         if (explorerMinions.count(mandatoryCarrier)) explorerMinions.erase(mandatoryCarrier);
         if (explorerMinions.count(flagDefender)) explorerMinions.erase(flagDefender);
 
         if (assignedExploration.back() == -1) {
-            //কে কোনটা explore করবে এটা শুরুতে ঠিক করে দাও
+            // কে কোনটা explore করবে এটা শুরুতে ঠিক করে দাও
             assignedExploration.back() = 0;
             int id = 0;
             assignedExploration[mandatoryCarrier] = n_minions - 2;
             assignedExploration[flagDefender] = 0;
-            for (int j = 0; j < n_minions; j++) {
-                if (distFromMyBase[myMinions[j].posX][myMinions[j].posY] >= 1000) {
-                    blocked.insert(j);
-                }
-            }
             int per = height / (n_minions - 2);
             for (int i = 0; i < n_minions; i++) {
                 if (i == mandatoryCarrier || i == flagDefender) {
-                    reachedFirstCell[i] = true;  //এদের দুইজনের এতো spread করা লাগবে না
+                    reachedFirstCell[i] = true;  // এদের দুইজনের এতো spread করা লাগবে না
                     firstAssignment[i] = {-1, -1};
                     continue;
                 }
@@ -573,9 +547,7 @@ struct Game {
                 for (auto they : cellsToExplore[id]) {
                     if (firstAssignment[i].first == -1) firstAssignment[i] = they;
                     else if (distOptional[they.first][they.second] <
-                                 distOptional[firstAssignment[i].first]
-                                             [firstAssignment[i].second] &&
-                             (they.second * 3 >= width) && (they.second * 3 <= 2 * width)) {
+                             distOptional[firstAssignment[i].first][firstAssignment[i].second]) {
                         firstAssignment[i] = they;
                     }
                 }
@@ -779,23 +751,20 @@ struct Game {
     void doThings(const Game& last, const Game& last2) {
         vector<int> v;
         // fixing the priorities
-        if (mandatoryCarrier != -1) v.push_back(mandatoryCarrier);
-        if (flagDefender != mandatoryCarrier && flagDefender != -1) v.push_back(flagDefender);
+        v.push_back(mandatoryCarrier);
+        if (flagDefender != mandatoryCarrier) v.push_back(flagDefender);
 
         for (int i = 0; i < n_minions; i++) {
             auto it = find(v.begin(), v.end(), i);
             if (it == v.end()) v.push_back(i);
         }
 
-        for (int i = 0; i < v.size(); i++) cerr << v[i] << " ";
-        cerr << endl;
+        // for (int i = 0; i < v.size(); i++) cerr << v[i] << " ";
+        // cerr << endl;
 
         for (int j = 0; j < n_minions; j++) {
             int i = v[j];
             if (!isAlive[i]) continue;  // dead already
-            if (blocked.count(i)) {
-                takeOperation(WAIT, i, moveDone);
-            }
 
             int xx = myMinions[i].posX;
             int yy = myMinions[i].posY;
@@ -865,7 +834,7 @@ struct Game {
             // cerr << "Prev: " << movX << " " << movY << " After: ";
 
             bool nullify = false;
-            if (!firstTime && i != mandatoryCarrier) {
+            if (!firstTime && i != flagDefender) {
                 for (int j = 0; j < n_minions; j++) {
                     if (!last2.isOppVisible[j] || !isOppVisible[j]) continue;
                     if (!askSameLine(xx, yy, oppMinions[j].posX, oppMinions[j].posY, false, -1,
@@ -889,14 +858,8 @@ struct Game {
                     break;
                 }
             }
-            if (!found && f2.second == a2.second) nullify = true;
-            if (i == mandatoryCarrier && backandforthcounter[i] >= 2 &&
-                oppScore >= last2.oppScore - 1)
-                nullify = true;
-            if (i == mandatoryCarrier && oppFlagCarrier == -1 && myFlagCarrier != -1 &&
-                distFromMyBase[myFlagX][myFlagY] >= 4)
-                nullify = true;
-            if (i == mandatoryCarrier && myAliveMinionCnt <= 2) nullify = true;
+            if (!found && f2.second == a2.second && i != flagDefender) nullify = true;
+
             if (!nullify) {
                 int distNow = distFromMyBase[xx][yy];
                 int score = INF;
@@ -958,13 +921,9 @@ struct Game {
                     }
 
                     else {
-                        if (a2.second - f2.second > 0 && myScore >= powerups[1].price)
-                            takeOperation(FREEZE, i, moveDone);
                         // opponent does not have the ability to attack
-                        else
-                            takeOperation(MOVE, i, moveDone, ref[0].parent.first,
-                                          ref[0].parent.second);
-                        //এই freeze টা জমায় রেখে পরে করলেও তো চলে
+                        takeOperation(MOVE, i, moveDone, ref[0].parent.first, ref[0].parent.second);
+                        // এই freeze টা জমায় রেখে পরে করলেও তো চলে
                     }
                 } else {
                     // not got the flag yet
@@ -978,21 +937,12 @@ struct Game {
                                         last))
                             encounter = true;
                     }
-                    int max_forth;
-                    if (last2.oppScore > oppScore && abs(last2.oppScore - oppScore) >= 4 &&
-                        oppScore >= powerups[0].price) {
-                        max_forth =
-                            2 * ((oppScore + powerups[0].price - 1) / powerups[0].price) + 1;
-                    } else if (abs(last2.oppScore - oppScore) < 4) {
-                        max_forth = 4;
-                    }
-                    cerr << max_forth << endl;
                     if (!encounter) {
                         // not encountering some flag defender
                         if (a2.second > 0 && oppScore >= powerups[0].price) {
                             // may attack me
-                            if (backandforthcounter[i] <= max_forth) {
-                                if (myScore < powerups[1].price) {  //টাকা নাই
+                            if (backandforthcounter[i] <= 4) {
+                                if (myScore < powerups[1].price) {  // টাকা নাই
                                     takeOperation(MOVE, i, moveDone, movX, movY);
                                 } else if (movX != oppFlagX || movY != oppFlagY) {
                                     takeOperation(MOVE, i, moveDone, movX, movY);
@@ -1000,13 +950,10 @@ struct Game {
                                            last.myMinions[i].timeout > 0) {
                                     if (myScore >= powerups[1].price && f2.second < a2.second)
                                         takeOperation(FREEZE, i, moveDone);
-                                    else if (myAliveMinionCnt <= 2 && myScore >= powerups[1].price)
-                                        takeOperation(FREEZE, i, moveDone);
                                 }
                                 takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             } else {
-                                //অনেক হইসে, এবার সামনে আগাও -_-
-                                cerr << "Whoa" << endl;
+                                // অনেক হইসে, এবার সামনে আগাও -_-
                                 takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             }
                         } else {
@@ -1028,8 +975,8 @@ struct Game {
 
                         if (a2.second > 0 && oppScore >= powerups[0].price) {
                             // may attack me
-                            if (backandforthcounter[i] <= max_forth) {
-                                if (myScore < powerups[1].price) {  //টাকা নাই
+                            if (backandforthcounter[i] <= 5) {
+                                if (myScore < powerups[1].price) {  // টাকা নাই
                                     takeOperation(MOVE, i, moveDone, movX, movY);
                                 } else if (movX != oppFlagX || movY != oppFlagY) {
                                     takeOperation(MOVE, i, moveDone, movX, movY);
@@ -1038,13 +985,9 @@ struct Game {
                                     if (myScore >= powerups[1].price && f2.second < a2.second)
                                         takeOperation(FREEZE, i, moveDone);
                                 }
-                                takeOperation(MOVE, i, moveDone, movX, movY);
+                                takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             } else {
-                                //অনেক হইসে, এবার সামনে আগাও -_-
-                                if (a2.second - f2.second > 0 || found) {
-                                    if (myScore >= powerups[1].price)
-                                        takeOperation(FREEZE, i, moveDone);
-                                }
+                                // অনেক হইসে, এবার সামনে আগাও -_-
                                 takeOperation(MOVE, i, moveDone, oppFlagX, oppFlagY);
                             }
                         } else {
@@ -1100,112 +1043,100 @@ struct Game {
                 // cerr << "Assigned Coin: " << assignedCoins[i].posX << " " <<
                 // assignedCoins[i].posY
                 //      << endl;
-                if (a1.second > 0 && myFlagCarrier != -1 &&
-                    askSameLine(xx, yy, myFlagX, myFlagY, false, -1, last)) {
-                    if (myScore >= powerups[0].price && a1.first == 0)
-                        takeOperation(FIRE, i, moveDone);
-                }
-                if (myFlagCarrier != -1 && flagDefender != -1 &&
-                    askSameLine(xx, yy, myMinions[flagDefender].posX, myMinions[flagDefender].posY,
-                                false, -1, last)) {
-                    if (movX != -1) takeOperation(MOVE, i, moveDone, movX, movY);
-                }
-            }
-            if (!firstTime && movX != -1) {
-                if (last.myMinions[i].health > myMinions[i].health || last.myMinions[i].timeout > 0)
-                    takeOperation(MOVE, i, moveDone, movX, movY);
-            }
-            if (!moveDone) {
-                int assigned_exploration_idx =
-                    assignedExploration[i];  //একে কোন সেট explore করতে বলা হইসে
-                if (!reachedFirstCell[i]) {
-                    // this is done to ensure that the minions are spread out
-                    // cerr << "Not reached" << endl;
-                    takeOperation(MOVE, i, moveDone, firstAssignment[i].first,
-                                  firstAssignment[i].second);
-                }
-                pair<int, int> dest = {-1, -1};
-                //আগে দেখো visible coin আছে নাকি?
-                if (assignedCoins[i].posX != -1) {  //একটা coin assign করা আছে
-                    // cerr << "This?" << endl;
-                    dest = {assignedCoins[i].posX, assignedCoins[i].posY};
-                }
-                if (visibleCoinCnt > 0) {
-                    // cerr << "Doing" << endl;
-                    int closestDist = INF, closestOne = -1;
-                    if (dest.first != -1) {
-                        closestDist = abs(dest.first - xx) + abs(dest.second - yy);
+                if (!moveDone) {
+                    int assigned_exploration_idx =
+                        assignedExploration[i];  // একে কোন সেট explore করতে বলা হইসে
+                    if (!reachedFirstCell[i]) {
+                        // this is done to ensure that the minions are spread out
+                        // cerr << "Or what" << endl;
+                        takeOperation(MOVE, i, moveDone, firstAssignment[i].first,
+                                      firstAssignment[i].second);
                     }
-                    for (int k = 0; k < visibleCoinCnt; k++) {
-                        if (visibleCoins[k].taken ||
-                            !askSameLine(xx, yy, visibleCoins[k].posX, visibleCoins[k].posY, false,
-                                         -1, last))
-                            continue;
-                        // cerr << "Hey" << endl;
-                        // for (int l = 0; l < n_minions; l++) {
-                        //     if (assignedCoins[l].posX == -1) continue;
-                        //     if (askSameLine(assignedCoins[l].posX, assignedCoins[l].posY,
-                        //                     visibleCoins[k].posX, visibleCoins[k].posY,
-                        //                     false, -1, last))
-                        //         continue;
-                        // }
-                        if (abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy) <
-                            closestDist) {
-                            closestOne = k;
-                            closestDist =
-                                abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy);
+                    pair<int, int> dest = {-1, -1};
+                    // আগে দেখো visible coin আছে নাকি?
+                    if (assignedCoins[i].posX != -1) {  // একটা coin assign করা আছে
+                        // cerr << "This?" << endl;
+                        dest = {assignedCoins[i].posX, assignedCoins[i].posY};
+                    }
+                    if (visibleCoinCnt > 0) {
+                        // cerr << "Doing" << endl;
+                        int closestDist = INF, closestOne = -1;
+                        if (dest.first != -1) {
+                            closestDist = abs(dest.first - xx) + abs(dest.second - yy);
                         }
-                    }
-                    if (closestOne != -1) {
-                        if (dest.first != -1 && (visibleCoins[closestOne].posX != dest.first ||
-                                                 visibleCoins[closestOne].posY != dest.second)) {
-                            for (int j = 0; j < visibleCoinCnt; j++) {
-                                if (visibleCoins[j].posX == dest.first &&
-                                    visibleCoins[j].posY == dest.second) {
-                                    visibleCoins[j].taken = false;
-                                    break;
-                                }
+                        for (int k = 0; k < visibleCoinCnt; k++) {
+                            if (visibleCoins[k].taken ||
+                                !askSameLine(xx, yy, visibleCoins[k].posX, visibleCoins[k].posY,
+                                             false, -1, last))
+                                continue;
+                            cerr << "Hey" << endl;
+                            // for (int l = 0; l < n_minions; l++) {
+                            //     if (assignedCoins[l].posX == -1) continue;
+                            //     if (askSameLine(assignedCoins[l].posX, assignedCoins[l].posY,
+                            //                     visibleCoins[k].posX, visibleCoins[k].posY,
+                            //                     false, -1, last))
+                            //         continue;
+                            // }
+                            if (abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy) <
+                                closestDist) {
+                                closestOne = k;
+                                closestDist =
+                                    abs(visibleCoins[k].posX - xx) + abs(visibleCoins[k].posY - yy);
                             }
                         }
-                        dest = {visibleCoins[closestOne].posX, visibleCoins[closestOne].posY};
-                        visibleCoins[closestOne].taken = true;
-                        assignedCoins[i].posX = dest.first;
-                        assignedCoins[i].posY = dest.second;
+                        if (closestOne != -1) {
+                            if (dest.first != -1 &&
+                                (visibleCoins[closestOne].posX != dest.first ||
+                                 visibleCoins[closestOne].posY != dest.second)) {
+                                for (int j = 0; j < visibleCoinCnt; j++) {
+                                    if (visibleCoins[j].posX == dest.first &&
+                                        visibleCoins[j].posY == dest.second) {
+                                        visibleCoins[j].taken = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            dest = {visibleCoins[closestOne].posX, visibleCoins[closestOne].posY};
+                            visibleCoins[closestOne].taken = true;
+                            assignedCoins[i].posX = dest.first;
+                            assignedCoins[i].posY = dest.second;
+                        }
+                        cerr << "Destination: " << dest.first << " " << dest.second << endl;
                     }
-                    cerr << "Destination: " << dest.first << " " << dest.second << endl;
+                    if (dest.first == -1) {
+                        // cerr << i << " " <<
+                        // cellsToExplore[assigned_exploration_idx].size()
+                        // << endl;
+                        if (!cellsToExplore[assigned_exploration_idx].empty()) {
+                            assert(!cellsToExplore[assigned_exploration_idx].empty());
+                            while (!cellsToExplore[assigned_exploration_idx].empty()) {
+                                pair<int, int> p = cellsToExplore[assigned_exploration_idx].back();
+                                if (leftToVisit[p.first][p.second]) {
+                                    dest = p;
+                                    break;
+                                } else cellsToExplore[assigned_exploration_idx].pop_back();
+                            }
+                        }
+                        if (cellsToExplore[assigned_exploration_idx].empty() &&
+                            dest == make_pair(-1, -1)) {
+                            int cnt = 0;
+                            while (true) {
+                                cnt++;
+                                if (cnt == n_minions) break;
+                                assigned_exploration_idx++;
+                                if (assigned_exploration_idx == n_minions)
+                                    assigned_exploration_idx = 0;
+                                if (!cellsToExplore[assigned_exploration_idx].empty()) break;
+                            }
+                            if (cnt == n_minions) {  // সব empty হয়ে গেসে
+                                cerr << "very less probability of this happening though" << endl;
+                                if (myFlagCarrier != -1) dest = {myFlagX, myFlagY};
+                                else dest = {myFlagBaseX, myFlagBaseY};
+                            }
+                        }
+                    }
+                    takeOperation(MOVE, i, moveDone, dest.first, dest.second);
                 }
-                if (dest.first == -1) {
-                    // cerr << i << " " <<
-                    // cellsToExplore[assigned_exploration_idx].size()
-                    // << endl;
-                    if (!cellsToExplore[assigned_exploration_idx].empty()) {
-                        assert(!cellsToExplore[assigned_exploration_idx].empty());
-                        while (!cellsToExplore[assigned_exploration_idx].empty()) {
-                            pair<int, int> p = cellsToExplore[assigned_exploration_idx].back();
-                            if (leftToVisit[p.first][p.second]) {
-                                dest = p;
-                                break;
-                            } else cellsToExplore[assigned_exploration_idx].pop_back();
-                        }
-                    }
-                    if (cellsToExplore[assigned_exploration_idx].empty() &&
-                        dest == make_pair(-1, -1)) {
-                        int cnt = 0;
-                        while (true) {
-                            cnt++;
-                            if (cnt == n_minions) break;
-                            assigned_exploration_idx++;
-                            if (assigned_exploration_idx == n_minions) assigned_exploration_idx = 0;
-                            if (!cellsToExplore[assigned_exploration_idx].empty()) break;
-                        }
-                        if (cnt == n_minions) {  //সব empty হয়ে গেসে
-                            cerr << "very less probability of this happening though" << endl;
-                            if (myFlagCarrier != -1) dest = {myFlagX, myFlagY};
-                            else dest = {myFlagBaseX, myFlagBaseY};
-                        }
-                    }
-                }
-                takeOperation(MOVE, i, moveDone, dest.first, dest.second);
             }
         }
     }
